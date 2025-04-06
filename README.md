@@ -25,8 +25,6 @@ Install all dependencies using:
 instantiate
 ```
 
-Now the project is ready to be run or developed further:
-
 ## Usage
 Leave the package manager by pressing BACKSPACE or Ctrl + C. This will take you back to the Julia REPL.
 ```julia
