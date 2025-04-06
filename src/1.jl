@@ -11,25 +11,25 @@ tspan = (0.0, 20.0)
 num_of_samples = 1000
 x = LinRange(0.0, 20.0, num_of_samples)
 prob = ODEProblem(ml, tspan)
-main_sol = solve(prob, Tsit5(), saveat = x, reltol=1e-8, abstol=1e-8)
-sys=ml.sys
+main_sol = solve(prob, Tsit5(), saveat=x, reltol=1e-8, abstol=1e-8)
+sys = ml.sys
 
 # TODO
 # 1, 2, 3, 4, 5, 6, 7
 # sys.LV.Pi, sys.Sas.Pi, sys.Svn.Po, sys.LV.V, sys.LV.Qo, ???, sys.Svn.Qi
 original_data = [main_sol[sys.LV.Pi],
-                 main_sol[sys.Sas.Pi],
-                 main_sol[sys.Svn.Po],
-                 main_sol[sys.LV.V],
-                 main_sol[sys.LV.Qo],
-                 ones(num_of_samples),
-                 main_sol[sys.Svn.Qi]]
+    main_sol[sys.Sas.Pi],
+    main_sol[sys.Svn.Po],
+    main_sol[sys.LV.V],
+    main_sol[sys.LV.Qo],
+    ones(num_of_samples),
+    main_sol[sys.Svn.Qi]]
 
 
 function Valve(R, deltaP, open)
     dq = 0.0
-    if (-open) < 0.0 
-        dq =  deltaP/R
+    if (-open) < 0.0
+        dq = deltaP / R
     else
         dq = 0.0
     end
@@ -38,9 +38,9 @@ function Valve(R, deltaP, open)
 end
 
 function ShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift)
-    τₑₛ = τₑₛ*τ
-    
-    τₑₚ = τₑₚ*τ
+    τₑₛ = τₑₛ * τ
+
+    τₑₚ = τₑₚ * τ
     #τ = 4/3(τₑₛ+τₑₚ)
     tᵢ = rem(t + (1 - Eshift) * τ, τ)
 
@@ -55,8 +55,8 @@ end
 
 function DShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift)
 
-    τₑₛ = τₑₛ*τ
-    τₑₚ = τₑₚ*τ
+    τₑₛ = τₑₛ * τ
+    τₑₚ = τₑₚ * τ
     #τ = 4/3(τₑₛ+τₑₚ)
     tᵢ = rem(t + (1 - Eshift) * τ, τ)
 
@@ -72,42 +72,41 @@ end
 #Shi timing parameters
 Eshift = 0.0
 Eₘᵢₙ = 0.03
-
 τₑₛ = 0.3
-τₑₚ = 0.45 
+τₑₚ = 0.45
 Eₘₐₓ = 1.5
 Rmv = 0.006
 τ = 1.0
 
 
 function NIK!(du, u, p, t)
-    pLV, psa, psv, Vlv, Qav, Qmv, Qs = u 
+    pLV, psa, psv, Vlv, Qav, Qmv, Qs = u
     τₑₛ, τₑₚ, Rmv, Zao, Rs, Csa, Csv, Eₘₐₓ, Eₘᵢₙ = p
     # The differential equations
     du[1] = (Qmv - Qav) * ShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift) + pLV / ShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift) * DShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift)
     # 1 Left Ventricle
-    du[2] = (Qav - Qs ) / Csa #Systemic arteries     
+    du[2] = (Qav - Qs) / Csa #Systemic arteries     
     du[3] = (Qs - Qmv) / Csv # Venous
     du[4] = Qmv - Qav # LV volume
-    du[5]    = Valve(Zao, (du[1] - du[2]), u[1] - u[2])  # AV 
-    du[6]   = Valve(Rmv, (du[3] - du[1]), u[3] - u[1])  # MV
-    du[7]     = (du[2] - du[3]) / Rs # Systemic flow
+    du[5] = Valve(Zao, (du[1] - du[2]), u[1] - u[2])  # AV 
+    du[6] = Valve(Rmv, (du[3] - du[1]), u[3] - u[1])  # MV
+    du[7] = (du[2] - du[3]) / Rs # Systemic flow
 end
 
 
 function NIK_PINN!(du, u, p, t)
-    pLV, psa, psv, Vlv, Qav, Qmv, Qs = u 
+    pLV, psa, psv, Vlv, Qav, Qmv, Qs = u
     τₑₛ, τₑₚ, Rmv, Zao, Rs, Csa, Csv, Eₘₐₓ, Eₘᵢₙ = params
-    
+
     # Neural Network component (NN for correction)
     NN_output = NN(u, p, st)[1]
 
     # The differential equations with NN correction
     du[1] = (Qmv - Qav) * ShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift) +
-        pLV / ShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift) * 
-        DShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift) + 
-        NN_output[1]
-    du[2] = (Qav - Qs ) / Csa + NN_output[2]  # Systemic arteries with NN correction
+            pLV / ShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift) *
+            DShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift) +
+            NN_output[1]
+    du[2] = (Qav - Qs) / Csa + NN_output[2]  # Systemic arteries with NN correction
     du[3] = (Qs - Qmv) / Csv + NN_output[3]  # Venous with NN correction
     du[4] = Qmv - Qav + NN_output[4]  # LV volume
     du[5] = Valve(Zao, (du[1] - du[2]), u[1] - u[2]) + NN_output[5]  # AV Valve
@@ -133,23 +132,23 @@ NN = Lux.Chain(
 )
 
 p, st = Lux.setup(rng, NN)
-p = 0.5*ComponentVector{Float64}(p)
+p = 0.5 * ComponentVector{Float64}(p)
 
 prob_NN = ODEProblem(NIK_PINN!, u0, tspan, p)
-s = solve(prob_NN, Vern7(), dtmax=1e-2, saveat = x, reltol=1e-7, abstol=1e-4)
+s = solve(prob_NN, Vern7(), dtmax=1e-2, saveat=x, reltol=1e-7, abstol=1e-4)
 
 function predict(p)
     temp_prob = remake(prob_NN, p=p)
-    temp_sol = solve(temp_prob, Vern7(), dtmax=1e-2, saveat = x, reltol=1e-7, abstol=1e-4)
+    temp_sol = solve(temp_prob, Vern7(), dtmax=1e-2, saveat=x, reltol=1e-7, abstol=1e-4)
     return temp_sol
 end
 
 function loss(p)
     pred = predict(p)
     if size(pred) == size(main_sol)
-      return mean(abs2, Array(pred) .- original_data)
+        return mean(abs2, Array(pred) .- original_data)
     else
-      return Inf, Array(pred) # Return infiinite loss if solution is unstable
+        return Inf, Array(pred) # Return infiinite loss if solution is unstable
     end
 end
 
@@ -157,24 +156,24 @@ losses1_0 = Float64[]
 
 callback = function (p, l)
     push!(losses1_0, l)
-    if length(losses1_0)%1==0
+    if length(losses1_0) % 1 == 0
         println("Current loss after $(length(losses1_0)) iterations: $(losses1_0[end])")
-      end
+    end
     return false
-  end
+end
 
 println("Hello, World!")
 
 adtype = Optimization.AutoForwardDiff()
-optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
+optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, ComponentVector{Float64}(p))
-  
+
 # 1000 iterations using learning rate of 0.01
-w1 = Optimization.solve(optprob, ADAM(0.01), callback=callback, maxiters = 1000)
-  
+w1 = Optimization.solve(optprob, ADAM(0.01), callback=callback, maxiters=1000)
+
 # 100 iteration using learning rate of 0.0001
 optprob2 = Optimization.OptimizationProblem(optf, w1.u)
-PINN_sol = Optimization.solve(optprob2, ADAM(0.0001), callback=callback, maxiters = 100)
+PINN_sol = Optimization.solve(optprob2, ADAM(0.0001), callback=callback, maxiters=100)
 
 
 # Plot and MSE Error
