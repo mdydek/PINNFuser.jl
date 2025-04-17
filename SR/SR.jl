@@ -10,17 +10,12 @@ using .simpleModel
 rng = StableRNG(5958)
 
 # Training range
-tspan = (0.0, 0.6)
-num_of_samples = 30
-tsteps = range(0.3, 0.6, length = num_of_samples)
+tspan = (0.0, 2.3)
+num_of_samples = 50
+tsteps = range(1.8, 2.3, length = num_of_samples)
 
 loaded_data = readdlm("data/original_data.txt")
 original_data = Array{Float64}(loaded_data)
-
-# Add noise
-noise_magnitude = 0.00
-sd = std(original_data, dims = 2)
-noisy_data = original_data .+ (noise_magnitude*sd) .* randn(rng, eltype(original_data), size(original_data))
 
 u0 = [6.0, 6.0, 6.0, 200.0, 0.0, 0.0, 0.0]
 params = [0.3, 0.45, 0.006, 0.033, 1.11, 1.13, 11.0, 1.5, 0.03]
@@ -95,6 +90,13 @@ function predict(p)
     return temp_sol
 end
 
+# λ = 1e-4  # Regularization coefficient
+
+# function regularization_term(p)
+#     return sum(abs2, values(p))
+# end
+
+
 function loss(p)
     pred = predict(p)
 
@@ -109,6 +111,10 @@ function loss(p)
 
     # println("pred_vals: size = ", size(pred_vals), ", eltype = ", eltype(pred_vals), ", typeof = ", typeof(pred_vals))
     # println("original_data: size = ", size(original_data), ", eltype = ", eltype(original_data), ", typeof = ", typeof(original_data))
+
+    # data_loss = mean(abs2, pred_vals .- original_data)
+    # reg_loss = regularization_term(p)
+    # return data_loss + λ * reg_loss
 
     return mean(abs2, pred_vals .- original_data)
 end
@@ -132,11 +138,19 @@ optf = Optimization.OptimizationFunction((x, p)->loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, ComponentVector{Float64}(p))
 
 # 1000 iterations using learning rate of 0.01
-w1 = Optimization.solve(optprob, ADAM(0.01), callback=callback, maxiters = 1000)
+w1 = Optimization.solve(optprob, ADAM(0.01), callback=callback, maxiters = 100)
+
+# 1000 iterations using learning rate of 0.001
+optprob1 = Optimization.OptimizationProblem(optf, w1.u)
+w2 = Optimization.solve(optprob1, ADAM(0.001), callback=callback, maxiters = 400)
+
+# 1000 iterations using learning rate of 0.005
+optprob2 = Optimization.OptimizationProblem(optf, w2.u)
+w3 = Optimization.solve(optprob2, ADAM(0.005), callback=callback, maxiters = 400)
 
 # 100 iteration using learning rate of 0.0001
-optprob2 = Optimization.OptimizationProblem(optf, w1.u)
-PINN_sol = Optimization.solve(optprob2, ADAM(0.0001), callback=callback, maxiters = 100)
+optprob3 = Optimization.OptimizationProblem(optf, w3.u)
+PINN_sol = Optimization.solve(optprob3, ADAM(0.0001), callback=callback, maxiters = 100)
 
 prediction = predict(PINN_sol.u)
 
@@ -155,13 +169,13 @@ data_to_save = hcat(
 )
 
 writedlm("data/pinn_data.txt", data_to_save)
-println("Dane z zakresu treningowego zapisane do pliku pinn_data.txt")
+println("Data from training range saved to pinn_data.txt")
 
 
 # Test range
-tspan2 = (0.0, 10.3)
-num_of_samples = 1000
-tsteps = range( 0.3, 10.3, length = num_of_samples)
+tspan2 = (0.0, 12.0)
+num_of_samples = 1200
+tsteps = range(0.0, 12.0, length = num_of_samples)
 
 p_trained = PINN_sol.u
 trained_NN = ODEProblem(NIK_PINN!, u0, tspan2, p_trained)
