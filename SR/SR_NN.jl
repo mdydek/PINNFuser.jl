@@ -10,11 +10,11 @@ using .simpleModel
 rng = StableRNG(5958)
 
 # Training range
-tspan = (0.0, 4.0)
-num_of_samples = 200
-tsteps = range(2.0, 4.0, length = num_of_samples)
+tspan = (0.0, 3.4)
+num_of_samples = 60
+tsteps = range(2.8, 3.4, length = num_of_samples)
 
-loaded_data = readdlm("data/original_data.txt")
+loaded_data = readdlm("dataNN/original_data.txt")
 original_data = Array{Float64}(loaded_data)
 
 u0 = [6.0, 6.0, 6.0, 200.0, 0.0, 0.0, 0.0]
@@ -51,10 +51,10 @@ end
 # )
 
 NN = Lux.Chain(
-    Lux.Dense(7, 10, elu),
-    Lux.Dense(10, 16, elu),
-    Lux.Dense(16, 10, elu),
-    Lux.Dense(10, 7)
+    Lux.Dense(7, 16, elu),
+    Lux.Dense(16, 16, elu),
+    Lux.Dense(16, 16, elu),
+    Lux.Dense(16, 7)
 )
 
 p, st = Lux.setup(rng, NN)
@@ -139,7 +139,7 @@ optf = Optimization.OptimizationFunction((x, p)->loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, ComponentVector{Float64}(p))
 
 # 1000 iterations using learning rate of 0.01
-w1 = Optimization.solve(optprob, ADAM(0.01), callback=callback, maxiters = 1000)
+w1 = Optimization.solve(optprob, ADAM(0.01), callback=callback, maxiters = 1200)
 
 # 1000 iterations using learning rate of 0.001
 # optprob1 = Optimization.OptimizationProblem(optf, w1.u)
@@ -165,7 +165,7 @@ data_to_save = hcat(
     prediction[7, :]
 )
 
-writedlm("data/pinn_data.txt", data_to_save)
+writedlm("dataNN/pinn_data.txt", data_to_save)
 println("Data from training range saved to pinn_data.txt")
 
 
@@ -189,4 +189,4 @@ data_to_save = hcat(
 )
 
 println("Pinn extrapolation saved to pinn_extrapolation.txt")
-writedlm("data/pinn_extrapolation.txt", data_to_save)
+writedlm("dataNN/pinn_extrapolation.txt", data_to_save)

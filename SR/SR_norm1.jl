@@ -9,14 +9,6 @@ using .simpleModel
 
 rng = StableRNG(5958)
 
-# Training range
-tspan = (0.0, 4.0)
-num_of_samples = 200
-tsteps = range(2.0, 4.0, length = num_of_samples)
-
-loaded_data = readdlm("data/original_data.txt")
-original_data = Array{Float64}(loaded_data)
-
 u0 = [6.0, 6.0, 6.0, 200.0, 0.0, 0.0, 0.0]
 params = [0.3, 0.45, 0.006, 0.033, 1.11, 1.13, 11.0, 1.5, 0.03]
 
@@ -30,59 +22,82 @@ Eₘₐₓ = 1.5
 Rmv = 0.006
 τ = 1.0
 
-# Simple model without NN
-# prob = ODEProblem(NIK!, u0, tspan, params)
-# @time simple_sol = solve(prob, Tsit5(), saveat = tsteps, reltol = 1e-8, abstol = 1e-8)
+# Simulate from 0.0 to 3.0 without training
+settling_tspan = (0.0, 3.0)
+tsteps = range(0.0, 3.0, length=300)
+prob = ODEProblem(NIK!, u0, settling_tspan, params)
+settling_sol = solve(prob, Tsit5(), saveat = tsteps, reltol = 1e-4, abstol = 1e-7, dtmax=1e-2)
 
-# Elu activation function
-function elu(x)
-    if x >=0
-        return x
-    else
-        return exp.(x) .- 1
-    end
-end
+# Use the final state as the new initial condition
+u0_settled = settling_sol.u[end]
 
-# NN = Lux.Chain(
-#     Lux.Dense(7, 16, elu),
-#     Lux.Dense(16, 32, elu),
-#     Lux.Dense(32, 16, elu),
-#     Lux.Dense(16, 7)
-# )
+# Training range
+tspan = (3.0, 4.0)
+num_of_samples = 100
+tsteps = range(3.0, 4.0, length = num_of_samples)
+
+loaded_data = readdlm("dataNorm1/original_data.txt")
+original_data = Array{Float64}(loaded_data)
+
 
 NN = Lux.Chain(
-    Lux.Dense(7, 10, elu),
-    Lux.Dense(10, 16, elu),
-    Lux.Dense(16, 10, elu),
-    Lux.Dense(10, 7)
+    Lux.Dense(7, 16, tanh),
+    Lux.Dense(16, 32, tanh),
+    Lux.Dense(32, 16, tanh),
+    Lux.Dense(16, 7)
 )
+
 
 p, st = Lux.setup(rng, NN)
 p = 0.5*ComponentVector{Float64}(p)
 
+# Compute mins and maxes from your dataset (column-wise)
+data_min = minimum(original_data, dims=1)
+data_max = maximum(original_data, dims=1)
+
+# Normalize and denormalize functions
+function normalize(x)
+    return 2 .* ((x .- data_min) ./ (data_max .- data_min)) .- 1
+end
+
+function denormalize(x)
+    return ((x .+ 1) ./ 2) .* (data_max .- data_min) .+ data_min
+end
+
+# Apply normalization to your data
+original_data = normalize(original_data)
+u0_settled = normalize(reshape(u0_settled, 1, :))[:]
+
 function NIK_PINN!(du, u, p, t)
     pLV, psa, psv, Vlv, Qav, Qmv, Qs = u
     τₑₛ, τₑₚ, Rmv, Zao, Rs, Csa, Csv, Eₘₐₓ, Eₘᵢₙ = params
-    
+
+    # Normalize u
+    # u_norm = (u .- μ) ./ σ
+
     # Neural Network component (NN for correction)
     NN_output = NN(u, p, st)[1]
+
+    # Rescale back 
+    # NN_output_rescaled = NN_output .* σ
+    NN_output_rescaled = NN_output
 
     # The differential equations with NN correction
     du[1] = (Qmv - Qav) * ShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift) +
         pLV / ShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift) * 
         DShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift) + 
-        NN_output[1]
-        du[2] = (Qav - Qs ) / Csa + NN_output[2] #Systemic arteries     
-        du[3] = (Qs - Qmv) / Csv + NN_output[3] # Venous
-        du[4] = Qmv - Qav + NN_output[4] # LV volume
-        du[5]    = Valve(Zao, (du[1] - du[2]), u[1] - u[2]) + NN_output[5]  # AV 
-        du[6]   = Valve(Rmv, (du[3] - du[1]), u[3] - u[1]) + NN_output[6]  # MV
-        du[7]     = (du[2] - du[3]) / Rs + NN_output[7] # Systemic flow
+        NN_output_rescaled[1]
+        du[2] = (Qav - Qs ) / Csa + NN_output_rescaled[2] #Systemic arteries     
+        du[3] = (Qs - Qmv) / Csv + NN_output_rescaled[3] # Venous
+        du[4] = Qmv - Qav + NN_output_rescaled[4] # LV volume
+        du[5]    = Valve(Zao, (du[1] - du[2]), u[1] - u[2]) + NN_output_rescaled[5]  # AV 
+        du[6]   = Valve(Rmv, (du[3] - du[1]), u[3] - u[1]) + NN_output_rescaled[6]  # MV
+        du[7]     = (du[2] - du[3]) / Rs + NN_output_rescaled[7] # Systemic flow
 
 end
 
 
-prob_NN = ODEProblem(NIK_PINN!, u0, tspan, p)
+prob_NN = ODEProblem(NIK_PINN!, u0_settled, tspan, p)
 s = solve(prob_NN, Vern7(), dtmax=1e-2, saveat = tsteps, reltol=1e-7, abstol=1e-4)
 
 function predict(p)
@@ -91,12 +106,11 @@ function predict(p)
     return temp_sol
 end
 
-# λ = 1e-4  # Regularization coefficient
+λ = 1e-3  # Regularization coefficient
 
-# function regularization_term(p)
-#     return sum(abs2, values(p))
-# end
-
+function regularization_term(p)
+    return sum(abs2, values(p))
+end
 
 function loss(p)
     pred = predict(p)
@@ -110,14 +124,11 @@ function loss(p)
         ForwardDiff.value(pred[6, :]),
         ForwardDiff.value(pred[7, :]))
 
-    # println("pred_vals: size = ", size(pred_vals), ", eltype = ", eltype(pred_vals), ", typeof = ", typeof(pred_vals))
-    # println("original_data: size = ", size(original_data), ", eltype = ", eltype(original_data), ", typeof = ", typeof(original_data))
-
-    # data_loss = mean(abs2, pred_vals .- original_data)
-    # reg_loss = regularization_term(p)
-    # return data_loss + λ * reg_loss
-
-    return mean(abs2, pred_vals .- original_data)
+    data_loss = mean(abs2, pred_vals .- original_data)
+    reg_loss = regularization_term(p)
+    return data_loss + λ * reg_loss
+    
+    # return mean(abs2, pred_vals .- original_data)
 end
 
 losses1_0 = Float64[]
@@ -165,7 +176,9 @@ data_to_save = hcat(
     prediction[7, :]
 )
 
-writedlm("data/pinn_data.txt", data_to_save)
+data_to_save = denormalize(data_to_save)
+
+writedlm("dataNorm1/pinn_data.txt", data_to_save)
 println("Data from training range saved to pinn_data.txt")
 
 
@@ -175,6 +188,7 @@ num_of_samples = 2000
 tsteps = range(0.0, 20.0, length = num_of_samples)
 
 p_trained = PINN_sol.u
+u0 = normalize(reshape(u0, 1, :))[:]
 trained_NN = ODEProblem(NIK_PINN!, u0, tspan2, p_trained)
 s = solve(trained_NN, Vern7(), dtmax=1e-2, saveat = tsteps, reltol=1e-7, abstol=1e-4)
 
@@ -188,5 +202,7 @@ data_to_save = hcat(
     s[7, :]
 )
 
+data_to_save = denormalize(data_to_save)
+
+writedlm("dataNorm1/pinn_extrapolation.txt", data_to_save)
 println("Pinn extrapolation saved to pinn_extrapolation.txt")
-writedlm("data/pinn_extrapolation.txt", data_to_save)
