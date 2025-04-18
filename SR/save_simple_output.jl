@@ -72,9 +72,11 @@ params = [0.3, 0.45, 0.006, 0.033, 1.11, 1.13, 11.0, 1.5, 0.03]
 
 # Test range
 tspan = (0.0, 20.0)
-# num_of_samples = 30
-num_of_samples = 1000
-tsteps = range(0.3, 10.3, length = num_of_samples)
+# num_of_samples = 200
+# tsteps = range(0.0, 2.0, length = num_of_samples)
+num_of_samples = 2000
+tsteps = range(0.0, 20.0, length = num_of_samples)
+
 
 # Simple model without NN
 prob = ODEProblem(NIK!, u0, tspan, params)
@@ -92,7 +94,7 @@ data_to_save = hcat(
 )
 
 # writedlm("data/simple_data.txt", data_to_save)
-# println("Dane zapisane do pliku simple_data.txt")
+# println("Data saved to simple_data.txt")
 
 writedlm("data/simple_extrapolation.txt", data_to_save)
-println("Dane zapisane do pliku simple_data.txt")
+println("Data saved to simple_extrapolation.txt")

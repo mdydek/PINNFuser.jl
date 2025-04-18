@@ -7,9 +7,8 @@ ml = CellModel("../models/shi_hose_2009-a679cdc2e974/ModelMain.cellml")
 
 # Training range
 tspan = (0.0, 20.0)
-# num_of_samples = 30
-num_of_samples = 1000
-tsteps = range(0.3, 10.3, length = num_of_samples)
+num_of_samples = 100
+tsteps = range(3.0, 4.0, length = num_of_samples)
 
 prob = ODEProblem(ml, tspan)
 main_sol = solve(prob, Tsit5(); saveat = tsteps, reltol = 1e-4, abstol = 1e-7, dtmax = 1e-2)
@@ -27,8 +26,8 @@ data_to_save = hcat(
 )
 
 # Zapisz dane do pliku tekstowego
-# writedlm("data/original_data.txt", data_to_save)
-writedlm("data/original_extrapolation.txt", data_to_save)
+writedlm("dataNorm1/original_data.txt", data_to_save)
+println("Dane zapisane do pliku original_data.txt")
 
-# println("Dane zapisane do pliku original_data.txt")
-println("Dane zapisane do pliku original_extrapolation.txt")
+# writedlm("dataNorm1/original_extrapolation.txt", data_to_save)
+# println("Dane zapisane do pliku original_extrapolation.txt")
