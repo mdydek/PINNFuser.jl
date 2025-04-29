@@ -63,17 +63,20 @@ function NIK!(du, u, p, t)
     du[3] = (Qs - Qmv) / Csv # Venous
     du[4] = Qmv - Qav # LV volume
     du[5]    = Valve(Zao, (du[1] - du[2]), u[1] - u[2])  # AV 
-    du[6]   = 1
+    du[6]   = Valve(Rmv, (du[3] - du[1]), u[3] - u[1])  # MV
     du[7]     = (du[2] - du[3]) / Rs # Systemic flow
 end
-##
 
 u0 = [6.0, 6.0, 6.0, 200.0, 0.0, 0.0, 0.0]
 params = [0.3, 0.45, 0.006, 0.033, 1.11, 1.13, 11.0, 1.5, 0.03]
 
-tspan = (0.0, 100.0)
+# Test range
+tspan = (0.0, 20.0)
 num_of_samples = 300
-tsteps = range(10.0, 12.0, length = num_of_samples)
+tsteps = range(5.0, 7.0, length = num_of_samples)
+# num_of_samples = 3000
+# tsteps = range(0.0, 20.0, length = num_of_samples)
+
 
 # Simple model without NN
 prob = ODEProblem(NIK!, u0, tspan, params)
@@ -86,9 +89,12 @@ data_to_save = hcat(
     simple_sol[3, :],
     simple_sol[4, :],
     simple_sol[5, :],
-    ones(num_of_samples),
+    simple_sol[6, :],
     simple_sol[7, :]
 )
 
-writedlm("data/simple_data.txt", data_to_save)
-println("Dane zapisane do pliku simple_data.txt")
+writedlm("../data/simple_data.txt", data_to_save)
+println("Data saved to simple_data.txt")
+
+# writedlm("../data/simple_extrapolation.txt", data_to_save)
+# println("Data saved to simple_extrapolation.txt")
