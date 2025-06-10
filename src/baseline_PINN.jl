@@ -3,6 +3,7 @@ using Lux, Plots, Zygote, Statistics, StableRNGs, ComponentArrays
 using Optimization, OptimizationOptimisers, OptimizationOptimJL
 using Optim, Measures, BenchmarkTools
 using DelimitedFiles, ForwardDiff
+using JLD2
 
 include("simple_CVS_model.jl")
 using .simpleModel
@@ -14,7 +15,7 @@ tspan = (0.0, 7.0)
 num_of_samples = 300
 tsteps = range(5.0, 7.0, length = num_of_samples)
 
-loaded_data = readdlm("data/original_data.txt")
+loaded_data = readdlm("src/data/original_data.txt")
 original_data = Array{Float64}(loaded_data)
 
 u0 = [6.0, 6.0, 6.0, 200.0, 0.0, 0.0, 0.0]
@@ -132,6 +133,8 @@ w1 = Optimization.solve(optprob, ADAM(0.01), callback = callback, maxiters = 500
 # 100 iteration using learning rate of 0.0001
 optprob1 = Optimization.OptimizationProblem(optf, w1.u)
 PINN_sol = Optimization.solve(optprob1, ADAM(0.0001), callback = callback, maxiters = 100)
+# zapisujemy wynik uczenia do pliku
+@save "models/PINN_sol.jld2" PINN_sol
 
 prediction = predict(PINN_sol.u)
 
@@ -158,6 +161,9 @@ tspan2 = (0.0, 20.0)
 num_of_samples = 3000
 tsteps = range(0.0, 20.0, length = num_of_samples)
 
+# i potem mozemy sobie to zaladowac ponownie
+# @load "models/PINN_sol.jld2" PINN_sol
+# zamiast uzywac tutaj tego wytrenowanego
 p_trained = PINN_sol.u
 trained_NN = ODEProblem(NIK_PINN!, u0, tspan2, p_trained)
 s = solve(trained_NN, Vern7(), dtmax = 1e-2, saveat = tsteps, reltol = 1e-7, abstol = 1e-4)
