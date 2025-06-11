@@ -15,7 +15,7 @@ tspan = (0.0, 7.0)
 num_of_samples = 300
 tsteps = range(5.0, 7.0, length = num_of_samples)
 
-loaded_data = readdlm("src/data/original_data.txt")
+loaded_data = readdlm("data/original_data.txt")
 original_data = Array{Float64}(loaded_data)
 
 u0 = [6.0, 6.0, 6.0, 200.0, 0.0, 0.0, 0.0]
