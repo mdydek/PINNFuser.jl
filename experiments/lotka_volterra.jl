@@ -26,7 +26,7 @@ tsteps = range(tspan[1], tspan[2], length=num_of_samples)
 # ------------------------------
 function lv_with_season!(du, u, p, t)
     x, y = u
-    α_season = α * (1.0 + 0.3*sin(2π*t/10))  # hidden seasonality
+    α_season = α * (1.0 + 0.3*sin(2pi/3)) # hidden seasonality
     du[1] = α_season*x - β*x*y
     du[2] = δ*x*y - γ*y
 end
@@ -57,17 +57,17 @@ p = 0 * ComponentVector{Float64}(p)
 function lv_PINN!(du, u, p, t)
     x, y = u
     NN_output = NN(u, p, st)[1]
-    du[1] = α*x - β*x*y + NN_output[1]
-    du[2] = δ*x*y - γ*y + NN_output[2]
+    du[1] = (α*x - β*x*y) * (1 + sin(pi * NN_output[1]))
+    du[2] = (δ*x*y - γ*y) * (1 + sin(pi * NN_output[2]))
 end
 
-prob_PINN = ODEProblem(lv_PINN!, u0, tspan, p)
+prob_PINN = ODEProblem(lv_PINN!, u0, tspan)
 
 # ------------------------------
 # Prediction function
 # ------------------------------
-function predict(p)
-    temp_prob = remake(prob_PINN, p=p)
+function predict(p, tspan=tspan, tsteps=tsteps)
+    temp_prob = remake(prob_PINN, p=p, tspan=tspan)
     temp_sol = solve(temp_prob, Tsit5(), saveat=tsteps, reltol=1e-6, abstol=1e-6)
     return temp_sol
 end
@@ -128,20 +128,27 @@ PINN_sol = Optimization.solve(optprob1, ADAM(0.001), callback=callback, maxiters
 # ------------------------------
 # Predictions: PINN vs ideal solver vs noisy data
 # ------------------------------
-prediction = predict(PINN_sol.u)
+extrapolation_tspan = (0.0, 60.0)
+new_tseps = range(extrapolation_tspan[1], extrapolation_tspan[2], length=num_of_samples * 3)
+
+prob_true_extrapolation = ODEProblem(lv_with_season!, u0, extrapolation_tspan)
+sol_true_extrapolation = solve(prob_true_extrapolation, Tsit5(), saveat=new_tseps)
+u_true_mat = hcat(sol_true_extrapolation.u...)'
+
+prediction = predict(PINN_sol.u, extrapolation_tspan, new_tseps)
 pred_mat = hcat(prediction.u...)'
 
-prob_ODE = ODEProblem((du,u,p,t)->(du[1]=α*u[1]-β*u[1]*u[2]; du[2]=δ*u[1]*u[2]-γ*u[2]), u0, tspan)
-sol_ODE = solve(prob_ODE, Tsit5(), saveat=tsteps)
+prob_ODE = ODEProblem((du,u,p,t)->(du[1]=α*u[1]-β*u[1]*u[2]; du[2]=δ*u[1]*u[2]-γ*u[2]), u0, extrapolation_tspan)
+sol_ODE = solve(prob_ODE, Tsit5(), saveat=new_tseps)
 
-plot(tsteps, data_noisy_mat[:,1], label="Prey noisy data", lw=2, ls=:dot)
-plot!(tsteps, pred_mat[:,1], label="PINN Prey", lw=3)
-plot!(tsteps, sol_ODE[1,:], label="ODE Prey (no NN)", lw=2, ls=:dash)
-plot!(tsteps, data_noisy_mat[:,2], label="Predator noisy data", lw=2, ls=:dot)
-plot!(tsteps, pred_mat[:,2], label="PINN Predator", lw=3)
-plot!(tsteps, sol_ODE[2,:], label="ODE Predator (no NN)", lw=2, ls=:dash)
+plot(new_tseps, u_true_mat[:,1], label="Prey ground truth", lw=2, ls=:dot)
+plot!(new_tseps, pred_mat[:,1], label="PINN Prey", lw=3)
+plot!(new_tseps, sol_ODE[1,:], label="ODE Prey (no NN)", lw=2, ls=:dash)
+plot(new_tseps, u_true_mat[:,2], label="Predator ground truth", lw=2, ls=:dot)
+plot!(new_tseps, pred_mat[:,2], label="PINN Predator", lw=3)
+plot!(new_tseps, sol_ODE[2,:], label="ODE Predator (no NN)", lw=2, ls=:dash)
 xlabel!("t")
 ylabel!("Population")
-title!("Lotka-Volterra: PINN vs Noisy Data vs Ideal ODE")
-savefig("lotka_volterra_plots/pinn_lv_seasonal_plot.png")
-println("Plot saved as pinn_lv_seasonal_plot.png")
+title!("Lotka-Volterra: PINN vs Noisy Data vs Ideal ODE extrapolation")
+savefig("experiments/lotka_volterra_plots/pinn_lv_seasonal_plot_extrapolation.png")
+println("Plot saved as pinn_lv_seasonal_plot_extrapolation.png")
