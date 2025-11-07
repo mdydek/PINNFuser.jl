@@ -46,7 +46,12 @@ infusing_problem = ODEProblem(lv_to_infuse!, u0, tspan)
     infusing_problem,
     NN,
     data_noisy_mat,
-    iters=100
+    iters=1
+)
+
+LibInfuser.PINN_Symbolic_Regressor(
+    NN,
+    (PINN_solu, trained_st)
 )
 
 # end of training, rest is plotting
@@ -89,5 +94,6 @@ plot!(new_tseps, sol_ODE[2,:], label="ODE Predator (no NN)", lw=2, ls=:dash, col
 xlabel!("t")
 ylabel!("Population")
 title!("Lotka-Volterra: PINN vs Noisy Data vs Ideal ODE extrapolation")
-savefig("pinn_lv_seasonal_plot_extrapolation.png")
-println("Plot saved as pinn_lv_seasonal_plot_extrapolation.png")
+name = "lotka_normal.png"
+savefig("$name")
+println("Plot saved as $name")

@@ -1,6 +1,8 @@
 module LibInfuser
 using Lux, StableRNGs, OptimizationOptimisers, ComponentArrays, LinearAlgebra
 using OrdinaryDiffEq, Statistics, ForwardDiff
+using SymbolicRegression: SRRegressor
+using MLJ: machine, fit!, predict, report
 
 """
     PINN_Infuser(ode_problem, nn, loss, target_data; alfa=0.1, optimizer=ADAM(), ...)
@@ -21,7 +23,7 @@ that includes both data fidelity and physical law adherence.
 - `rng::StableRNG` = StableRNG(5958): A random number generator for reproducibility.
 
 # Returns
-- `ComponentArray{Float64}`: The trained parameters of the neural network.
+- `Tuple{Any, Any}`: The trained parameters of the neural network.
 """
 function PINN_Infuser(
     ode_problem::SciMLBase.ODEProblem,
@@ -32,9 +34,9 @@ function PINN_Infuser(
     optimizer = Adam,
     iters::Int = 1000,
     rng::StableRNG = StableRNG(5958)
-)::Tuple{ComponentArray{Float64}, Any}
+)::Tuple{Any, Any}
     p, st = Lux.setup(rng, nn)
-    p = 0 * ComponentVector{Float64}(p)
+    p = 0.1 * ComponentVector{Float64}(p)
 
     ode_f = ode_problem.f
     original_p = ode_problem.p
@@ -44,7 +46,7 @@ function PINN_Infuser(
         nn_output = nn(u, p, st)[1]
         ode_f(du, u, original_p, t)
         for i in eachindex(du)
-            du[i] *= alfa * (1 + sin(3.14 * nn_output[i]))
+            du[i] *= alfa * (1 + tanh(3.14 * nn_output[i]))
         end
     end
 
@@ -63,25 +65,30 @@ function PINN_Infuser(
 
     function physics_loss(pred, p)
         pred_mat = hcat(pred.u...)'
-        loss = 0.0
+        l = 0.0
         
         for (i, t) in enumerate(tsteps)
             u = pred_mat[i, :]
-            du = similar(u)
-            pinn_ode!(du, u, p, t)
-            du2 = similar(u)
-            ode_f(du2, u, original_p, t)
-            loss += sum(abs2.(du .- du2))
+            nn_output = nn(u, p, st)[1]
+            
+            u_val = ForwardDiff.value.(u)
+            du_original = similar(u, Float64)
+            ode_f(du_original, u_val, original_p, t)
+            
+            modulation = alfa .* (1 .+ sin.(3.14 .* nn_output))
+            du_modified = du_original .* modulation
+            
+            l += sum(abs2.(du_modified .- du_original))
         end
-        return loss / length(tsteps)
+        
+        return l
     end
 
     function loss(p)
         pred = predict(p)
         L_data = data_loss(pred, target_data)
-        # sadly physics loss currently is not working :(
-        # L_phys = physics_loss(pred, p)
-        return L_data
+        L_phys = physics_loss(pred, p)
+        return L_data + 0.5 * L_phys
     end
 
     adtype = Optimization.AutoForwardDiff()
@@ -134,21 +141,46 @@ end
     PINN_Symbolic_Regressor(ode_problem, nn, pretrained_params)
 Wraps a pre-trained neural network into an ODE problem for symbolic regression.
 # Arguments
-- `ode_problem::SciMLBase.ODEProblem`: The original ODE problem defining the
-system's dynamics.
 - `nn::Lux.Chain`: The Lux neural network model structure.
-- `pretrained_params::ComponentArray{Float64}`: The trained parameters of the neural
+- `pretrained_params::Tuple{Any, Any}`: The trained parameters of the neural
 network.
-# Returns
-- `SciMLBase.ODEProblem`: A new ODE problem without the neural network infused,
-but incorporating the learned behavior via symbolic regression. This ODE problem can be
-used for further analysis or simulation.
 """
 function PINN_Symbolic_Regressor(
-    ode_problem::SciMLBase.ODEProblem,
     nn::Lux.Chain,
-    pretrained_params::ComponentArray{Float64},
-)::SciMLBase.ODEProblem
+    pretrained_params::Tuple{Any, Any},
+)
+
+    trained_u, trained_st = pretrained_params
+    num_samples = 500
+    in_dims = nn[1].in_dims
+    X_lux = 100 * rand(Float64, in_dims, num_samples)
+
+    y_matrix = nn(X_lux, trained_u, trained_st)[1]
+
+    X_mlj = transpose(X_lux)
+    
+    out_dims = size(y_matrix, 1)
+        
+    sr_model = SRRegressor(
+        niterations=500,
+        binary_operators=[+, -, *, /],
+        unary_operators=[cos, exp, sin],
+        maxsize=15
+    )
+
+    for j in 1:out_dims
+        println("\n--- Finding equation for Output $j ---")
+        
+        y_j_mlj = vec(y_matrix[j, :])
+        
+        mach = machine(sr_model, X_mlj, y_j_mlj)
+        fit!(mach)
+        
+        report(mach)
+    end
+end
+
+function PINN_Parameter_Optimizer()
 end
 
 
