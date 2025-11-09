@@ -1,10 +1,7 @@
-using OrdinaryDiffEq
-using Lux, Plots, Statistics, StableRNGs, ComponentArrays
-using Optimization, OptimizationOptimisers
-using ForwardDiff
+using Plots, DelimitedFiles, StableRNGs, OrdinaryDiffEq, Lux
 
 rng = StableRNG(5958)
-include("../src/lib.jl")
+include("../src/lib/lib.jl")
 
 α = 1.1
 β = 0.4
@@ -46,24 +43,13 @@ infusing_problem = ODEProblem(lv_to_infuse!, u0, tspan)
     infusing_problem,
     NN,
     data_noisy_mat,
-    iters=1
+    iters=5
 )
 
-LibInfuser.PINN_Symbolic_Regressor(
-    NN,
-    (PINN_solu, trained_st)
-)
-
-# end of training, rest is plotting
-
-function lv_to_infuse2!(du, u, p, t)
-    x, y = u
-    nn_output = NN(u, PINN_solu, trained_st)[1]
-    du[1] = (α*x - β*x*y) * (1 + sin(3.14 * nn_output[1]))
-    du[2] = (δ*x*y - γ*y) * (1 + sin(3.14 * nn_output[2]))
-end
-
-infusing_problem2 = ODEProblem(lv_to_infuse2!, u0, tspan)
+# LibInfuser.PINN_Symbolic_Regressor(
+#     NN,
+#     (PINN_solu, trained_st)
+# )
 
 extrapolation_tspan = (0.0, 60.0)
 new_tseps = range(extrapolation_tspan[1], extrapolation_tspan[2], length=num_of_samples * 3)
@@ -74,9 +60,19 @@ sol_true_extrapolation = solve(prob_true_extrapolation, Tsit5(), saveat=new_tsep
 u_true_mat = hcat(sol_true_extrapolation.u...)'
 
 # Get PINN prediction
-trained_extrapolation = ODEProblem(lv_to_infuse2!, u0, extrapolation_tspan)
-solved_trained_extrapolation = solve(trained_extrapolation, Tsit5(), saveat=new_tseps)
-pred_mat = hcat(solved_trained_extrapolation.u...)'
+
+LibInfuser.PINN_Extrapolator(
+    infusing_problem,
+    extrapolation_tspan,
+    1.0,
+    num_of_samples * 3,
+    u0,
+    NN,
+    (PINN_solu, trained_st),
+    "lotka_extrapolation.csv"
+)
+
+pred_mat = readdlm("lotka_extrapolation.csv", ',', Float64)
 
 # Get standard ODE solution
 prob_ODE = ODEProblem((du,u,p,t)->(du[1]=α*u[1]-β*u[1]*u[2]; du[2]=δ*u[1]*u[2]-γ*u[2]), u0, extrapolation_tspan)

@@ -1,8 +1,5 @@
-module LibInfuser
 using Lux, StableRNGs, OptimizationOptimisers, ComponentArrays, LinearAlgebra
 using OrdinaryDiffEq, Statistics, ForwardDiff
-using SymbolicRegression: SRRegressor
-using MLJ: machine, fit!, predict, report
 
 """
     PINN_Infuser(ode_problem, nn, loss, target_data; alfa=0.1, optimizer=ADAM(), ...)
@@ -103,85 +100,4 @@ function PINN_Infuser(
     trained_params = Optimization.solve(optprob, optimizer(learning_rate), callback=callback, maxiters=iters)
     
     return (trained_params.u, st)
-end
-
-"""
-    PINN_Extrapolator(ode_problem, tspan, num_of_samples, u0, pretrained_params, path_to_save)
-
-Solves a PINN-infused ODE problem to extrapolate its trajectory and saves the result to a file.
-
-This function takes a pre-trained neural network's parameters (`pretrained_params`) and an `ODEProblem` that uses them. It then solves this problem over a new time span `tspan` starting from a new initial condition `u0`, generating a specified number of sample points. The resulting time series data is saved to `path_to_save`.
-
-# Arguments
-- `ode_problem::SciMLBase.ODEProblem`: The ODE problem defining the system's dynamics, which should be parameterized by the neural network.
-- `tspan::Tuple{Float64, Float64}`: The time interval `(t_start, t_end)` for the extrapolation.
-- `num_of_samples::Int`: The number of evenly spaced time points to generate and save within the `tspan`.
-- `alfa::Float64`: The weight factor for the NN infusion in ODE.
-- `u0::Array{Float64}`: The initial condition (state vector) from which to start the extrapolation.
-- `nn::Lux.Chain`: The Lux neural network model structure.
-- `pretrained_params::ComponentArray{Float64}`: The trained parameters of the neural network.
-- `path_to_save::String`: The full file path (e.g., `"data/prediction.csv"`) where the output will be saved.
-
-# Returns
-- The function is intended for side-effects (saving a file) and may not have a meaningful return value (`nothing`).
-"""
-function PINN_Extrapolator(
-    ode_problem::SciMLBase.ODEProblem,
-    tspan::Tuple{Float64, Float64},
-    alfa::Float64,
-    num_of_samples::Int,
-    u0::Array{Float64},
-    nn::Lux.Chain,
-    pretrained_params::ComponentArray{Float64},
-    path_to_save::String
-)::Nothing
-end
-
-"""
-    PINN_Symbolic_Regressor(ode_problem, nn, pretrained_params)
-Wraps a pre-trained neural network into an ODE problem for symbolic regression.
-# Arguments
-- `nn::Lux.Chain`: The Lux neural network model structure.
-- `pretrained_params::Tuple{Any, Any}`: The trained parameters of the neural
-network.
-"""
-function PINN_Symbolic_Regressor(
-    nn::Lux.Chain,
-    pretrained_params::Tuple{Any, Any},
-)
-
-    trained_u, trained_st = pretrained_params
-    num_samples = 500
-    in_dims = nn[1].in_dims
-    X_lux = 100 * rand(Float64, in_dims, num_samples)
-
-    y_matrix = nn(X_lux, trained_u, trained_st)[1]
-
-    X_mlj = transpose(X_lux)
-    
-    out_dims = size(y_matrix, 1)
-        
-    sr_model = SRRegressor(
-        niterations=500,
-        binary_operators=[+, -, *, /],
-        unary_operators=[cos, exp, sin],
-        maxsize=15
-    )
-
-    for j in 1:out_dims
-        println("\n--- Finding equation for Output $j ---")
-        
-        y_j_mlj = vec(y_matrix[j, :])
-        
-        mach = machine(sr_model, X_mlj, y_j_mlj)
-        fit!(mach)
-        
-        report(mach)
-    end
-end
-
-function PINN_Parameter_Optimizer()
-end
-
-
 end
