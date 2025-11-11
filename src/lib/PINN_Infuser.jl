@@ -13,6 +13,7 @@ that includes both data fidelity and physical law adherence.
 - `target_data::Array{Float64}`: The ground truth data for training.
 
 # Keyword Arguments
+- `early_stopping::Bool = true`: Whether to enable early stopping based on loss convergence.
 - `alfa::Float64 = 1.0`: The weight factor for the NN infusion in ODE.
 - `optimizer = OptimizationOptimisers.Adam`: The optimization algorithm to use.
 - `learning_rate::Float64 = 0.001`: The learning rate for the optimizer.
@@ -26,6 +27,7 @@ function PINN_Infuser(
     ode_problem::SciMLBase.ODEProblem,
     nn::Lux.Chain,
     target_data::AbstractMatrix{Float64};
+    early_stopping::Bool = true,
     alfa::Float64 = 1.0,
     learning_rate::Float64 = 0.001,
     optimizer = Adam,
@@ -85,7 +87,7 @@ function PINN_Infuser(
         pred = predict(p)
         L_data = data_loss(pred, target_data)
         L_phys = physics_loss(pred, p)
-        return L_data + 0.5 * L_phys
+        return L_data + 2 * L_phys
     end
 
     adtype = Optimization.AutoForwardDiff()
@@ -95,7 +97,12 @@ function PINN_Infuser(
     callback = function(p, l)
         push!(losses, l)
         println("Iteration $(length(losses)): Loss = $(losses[end])")
-        return false
+        if early_stopping && length(losses) > 10 && abs(losses[end] - losses[end-10]) < 1e-3
+            println("Early stopping at iteration $(length(losses)) with loss $(losses[end])")
+            return true
+        else 
+            return false
+        end
     end
     trained_params = Optimization.solve(optprob, optimizer(learning_rate), callback=callback, maxiters=iters)
     
