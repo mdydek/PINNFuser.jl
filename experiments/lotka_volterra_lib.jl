@@ -1,4 +1,4 @@
-using Plots, DelimitedFiles, StableRNGs, OrdinaryDiffEq, Lux
+using DelimitedFiles, StableRNGs, OrdinaryDiffEq, Lux
 
 rng = StableRNG(5958)
 include("../src/lib/lib.jl")
@@ -43,7 +43,7 @@ infusing_problem = ODEProblem(lv_to_infuse!, u0, tspan)
     infusing_problem,
     NN,
     data_noisy_mat,
-    iters=5
+    iters=250
 )
 
 # LibInfuser.PINN_Symbolic_Regressor(
@@ -66,7 +66,6 @@ LibInfuser.PINN_Extrapolator(
     extrapolation_tspan,
     1.0,
     num_of_samples * 3,
-    u0,
     NN,
     (PINN_solu, trained_st),
     "lotka_extrapolation.csv"
@@ -77,19 +76,17 @@ pred_mat = readdlm("lotka_extrapolation.csv", ',', Float64)
 # Get standard ODE solution
 prob_ODE = ODEProblem((du,u,p,t)->(du[1]=α*u[1]-β*u[1]*u[2]; du[2]=δ*u[1]*u[2]-γ*u[2]), u0, extrapolation_tspan)
 sol_ODE = solve(prob_ODE, Tsit5(), saveat=new_tseps)
+ode_solution = hcat(sol_ODE.u...)'
 
-# Plotting
-plot(new_tseps, u_true_mat[:,1], label="Prey ground truth", lw=2, ls=:dot, color=:blue)
-plot!(new_tseps, pred_mat[:,1], label="PINN Prey", lw=3, color=:red)
-plot!(new_tseps, sol_ODE[1,:], label="ODE Prey (no NN)", lw=2, ls=:dash, color=:green)
-
-plot!(new_tseps, u_true_mat[:,2], label="Predator ground truth", lw=2, ls=:dot, color=:cyan)
-plot!(new_tseps, pred_mat[:,2], label="PINN Predator", lw=3, color=:orange)
-plot!(new_tseps, sol_ODE[2,:], label="ODE Predator (no NN)", lw=2, ls=:dash, color=:purple)
-
-xlabel!("t")
-ylabel!("Population")
-title!("Lotka-Volterra: PINN vs Noisy Data vs Ideal ODE extrapolation")
-name = "lotka_normal.png"
-savefig("$name")
-println("Plot saved as $name")
+LibInfuser.PINN_Plotter(
+    pred_mat,
+    data_noisy_mat,
+    ode_solution,
+    ["Prey data", "PINN Prey", "ODE Prey (no NN)", "Predator data", "PINN Predator", "ODE Predator (no NN)"],
+    tsteps,
+    new_tseps,
+    "t",
+    "Population",
+    "Lotka-Volterra: Data vs PINN vs simple ODE",
+    "lotka_pinn_plot.png"
+)
