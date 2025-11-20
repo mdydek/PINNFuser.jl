@@ -48,9 +48,8 @@ trained_nn_params, st, tuned_values =
         tune_params = tune_params,
         range_fraction = 0.6,
         learning_rate = 0.001,
-        iters = 10,
+        iters = 3,
         rng = StableRNG(5958),
-        num_param_samples = 5,
     )
 
 println("\nTuned parameter samples:")
@@ -67,7 +66,7 @@ tsim = (0.0, 60.0)
 tsteps2 = range(0, 60, length=9000)
 
 prob_final = ODEProblem(
-    (du,u,p,t)->model_CVS!(du,u,vcat(tuned_values[1]),t),
+    (du,u,p,t)->model_CVS!(du,u,vcat(tuned_values),t),
     u0, tsim, nothing
 )
 
