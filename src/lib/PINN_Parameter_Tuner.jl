@@ -7,9 +7,9 @@ using Optimization
 using OptimizationOptimisers
 using Statistics
 
-export PINN_Parameter_Optimizer
+export PINN_Parameter_Tuner
 
-function PINN_Parameter_Optimizer(
+function PINN_Parameter_Tuner(
     model_ode!::Function,
     u0::AbstractVector{<:Real},
     tspan::Tuple,
@@ -22,7 +22,7 @@ function PINN_Parameter_Optimizer(
     iters::Int = 1000,
     rng = StableRNG(1234),
     num_param_samples::Int = 5,
-    nn = nothing
+    nn::Union{Nothing, Lux.Chain} = nothing
 )
 
     nin = length(u0)

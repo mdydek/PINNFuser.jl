@@ -1,5 +1,9 @@
+module PINNInfuser
+
 using Lux, StableRNGs, OptimizationOptimisers, ComponentArrays, LinearAlgebra
 using OrdinaryDiffEq, Statistics, ForwardDiff
+
+export PINN_Infuser
 
 """
     PINN_Infuser(ode_problem, nn, loss, target_data; alfa=0.1, optimizer=ADAM(), ...)
@@ -108,3 +112,5 @@ function PINN_Infuser(
     
     return (trained_params.u, st)
 end
+
+end # module PINNInfuser

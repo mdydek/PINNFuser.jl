@@ -1,2 +1,0 @@
-function PINN_Parameter_Optimizer()
-end
