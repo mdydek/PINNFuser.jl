@@ -9,6 +9,34 @@ using Statistics
 
 export PINN_Parameter_Tuner
 
+
+"""
+    PINN_Parameter_Tuner(model_ode!, u0, tspan, target_data; initial_params, tune_params, ...)
+
+Trains a neural network to tune selected constant parameters of an ODE model.
+
+# Arguments
+- `model_ode!(du, u, p, t)::Function`: The user-defined ODE function, expecting a parameter vector `p`.
+- `u0::AbstractVector{<:Real}`: Initial state vector of the system.
+- `tspan::Tuple`: Time span of the simulation, e.g., `(0.0, 7.0)`.
+- `target_data::AbstractMatrix`: Reference data used to train the network.
+
+# Keyword Arguments
+- `initial_params::Vector{<:Real}`: Initial values for the model parameters.
+- `tune_params::Vector{Int}`: Indices of parameters to be tuned by the neural network.
+- `range_fraction::Float64 = 0.6`: Allowed relative range for each tunable parameter.
+- `learning_rate::Float64 = 0.01`: Learning rate for the optimizer.
+- `optimizer = ADAM`: Optimization algorithm (e.g., ADAM, RMSProp).
+- `iters::Int = 1000`: Number of training iterations.
+- `rng = StableRNG(1234)`: Random number generator for reproducibility.
+- `nn::Union{Nothing, Lux.Chain} = nothing`: Optional user-provided neural network. If `nothing`, a default network is created.
+
+# Returns
+- `res.u::ComponentVector{Float64}`: Trained neural network parameters.
+- `st::NamedTuple`: Network state (required for predictions with Lux).
+- `tuned_list::Vector{Vector{Float64}}`: List of parameter vectors generated for the first `num_param_samples` states in `target_data`.
+"""
+
 function PINN_Parameter_Tuner(
     model_ode!::Function,
     u0::AbstractVector{<:Real},
@@ -21,7 +49,6 @@ function PINN_Parameter_Tuner(
     optimizer = ADAM,
     iters::Int = 1000,
     rng = StableRNG(1234),
-    num_param_samples::Int = 5,
     nn::Union{Nothing, Lux.Chain} = nothing
 )
 
@@ -102,15 +129,9 @@ function PINN_Parameter_Tuner(
     res = Optimization.solve(optprob, optimizer(learning_rate),
                              callback=cb, maxiters=iters)
 
+    final_params = param_from_NN(target_data[1, 1:length(u0)], res.u, st)
 
-    tuned_list = Vector{Vector{Float64}}(undef, num_param_samples)
-
-    for i in 1:num_param_samples
-        u_sample = target_data[i, 1:length(u0)]
-        tuned_list[i] = param_from_NN(u_sample, res.u, st)
-    end
-
-    return trained, st, tuned_list
+    return res.u, st, final_params
 end
 
 end
