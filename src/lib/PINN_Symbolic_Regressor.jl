@@ -1,6 +1,10 @@
+module PINNSymbolicRegressor
+
 using Lux, StableRNGs
 using SymbolicRegression: SRRegressor
 using MLJ: machine, fit!, predict, report
+
+export PINN_Symbolic_Regressor
 
 """
     PINN_Symbolic_Regressor(ode_problem, nn, pretrained_params)
@@ -44,3 +48,5 @@ function PINN_Symbolic_Regressor(
         report(mach)
     end
 end
+
+end # module PINNSymbolicRegressor

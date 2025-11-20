@@ -1,4 +1,8 @@
+module PINNExtrapolator
+
 using Lux, DelimitedFiles
+
+export PINN_Extrapolator
 
 """
     PINN_Extrapolator(ode_problem, tspan, num_of_samples, u0, pretrained_params, path_to_save)
@@ -44,3 +48,5 @@ function PINN_Extrapolator(
 
     writedlm(path_to_save, pred_mat, ',')
 end
+
+end # module PINNExtrapolator

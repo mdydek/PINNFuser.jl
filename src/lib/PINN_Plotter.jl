@@ -1,4 +1,8 @@
+module PINNPlotter
+
 using Plots
+
+export PINN_Plotter
 
 """
     PINN_Plotter(infused_matrix, data, ode_solution, labels, data_steps, extrapolation_tseps, xlabel, ylabel, title, filename)
@@ -61,3 +65,5 @@ savefig("$filename")
 println("Plot saved as $filename")
 
 end
+
+end # module PINNPlotter
