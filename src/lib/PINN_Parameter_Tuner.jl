@@ -36,7 +36,6 @@ Trains a neural network to tune selected constant parameters of an ODE model.
 - `st::NamedTuple`: Network state (required for predictions with Lux).
 - `tuned_list::Vector{Vector{Float64}}`: List of parameter vectors generated for the first `num_param_samples` states in `target_data`.
 """
-
 function PINN_Parameter_Tuner(
     model_ode!::Function,
     u0::AbstractVector{<:Real},

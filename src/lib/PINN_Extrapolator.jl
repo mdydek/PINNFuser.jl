@@ -1,6 +1,6 @@
 module PINNExtrapolator
 
-using Lux, DelimitedFiles
+using Lux, DelimitedFiles, OrdinaryDiffEq
 
 export PINN_Extrapolator
 
@@ -23,7 +23,7 @@ This function takes a pre-trained neural network's parameters (`pretrained_param
 function PINN_Extrapolator(
     base_problem::SciMLBase.ODEProblem,
     tspan::Tuple{Float64, Float64},
-    alfa::Float64,
+    alpha::Float64,
     num_of_samples::Int,
     nn::Lux.Chain,
     pretrained_params::Tuple{Any, Any},
@@ -35,9 +35,7 @@ function PINN_Extrapolator(
     function pinn_ode!(du, u, p, t)
         nn_output = nn(u, trained_u, trained_st)[1]
         base_problem.f(du, u, base_problem.p, t)
-        for i in eachindex(du)
-            du[i] *= alfa * (1 + tanh(3.14 * nn_output[i]))
-        end
+        du .*= 1 .+ (alpha .* sin.(nn_output))
     end
 
     pinn_problem = ODEProblem(pinn_ode!, base_problem.u0, tspan)

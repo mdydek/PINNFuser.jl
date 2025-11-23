@@ -18,7 +18,7 @@ that includes both data fidelity and physical law adherence.
 
 # Keyword Arguments
 - `early_stopping::Bool = true`: Whether to enable early stopping based on loss convergence.
-- `alfa::Float64 = 1.0`: The weight factor for the NN infusion in ODE.
+- `alpha::Float64 = 0.1`: The weight factor for the NN infusion in ODE.
 - `optimizer = OptimizationOptimisers.Adam`: The optimization algorithm to use.
 - `learning_rate::Float64 = 0.001`: The learning rate for the optimizer.
 - `iters::Int = 1000`: The number of training iterations.
@@ -32,7 +32,7 @@ function PINN_Infuser(
     nn::Lux.Chain,
     target_data::AbstractMatrix{Float64};
     early_stopping::Bool = true,
-    alfa::Float64 = 1.0,
+    alpha::Float64 = 0.1,
     learning_rate::Float64 = 0.001,
     optimizer = Adam,
     iters::Int = 1000,
@@ -41,16 +41,18 @@ function PINN_Infuser(
     p, st = Lux.setup(rng, nn)
     p = 0.1 * ComponentVector{Float64}(p)
 
+    U_MEAN = vec(mean(target_data, dims=1))
+    U_STD  = vec(std(target_data, dims=1)) .+ 1e-6
+
     ode_f = ode_problem.f
     original_p = ode_problem.p
     tsteps = range(ode_problem.tspan[1], ode_problem.tspan[2], length=size(target_data, 1))
 
     function pinn_ode!(du, u, p, t)
-        nn_output = nn(u, p, st)[1]
+        nn_input = (u .- U_MEAN) ./ U_STD
+        nn_output = nn(nn_input, p, st)[1]
         ode_f(du, u, original_p, t)
-        for i in eachindex(du)
-            du[i] *= alfa * (1 + tanh(3.14 * nn_output[i]))
-        end
+        du .*= 1 .+ (alpha .* sin.(nn_output))
     end
 
     prob_PINN = ODEProblem(pinn_ode!, ode_problem.u0, ode_problem.tspan, p)
@@ -90,8 +92,8 @@ function PINN_Infuser(
     function loss(p)
         pred = predict(p)
         L_data = data_loss(pred, target_data)
-        L_phys = physics_loss(pred, p)
-        return L_data + 2 * L_phys
+        # L_phys = physics_loss(pred, p)
+        return L_data
     end
 
     adtype = Optimization.AutoForwardDiff()

@@ -43,7 +43,7 @@ infusing_problem = ODEProblem(lv_to_infuse!, u0, tspan)
     infusing_problem,
     NN,
     data_noisy_mat,
-    iters=250
+    iters=250,
 )
 
 # LibInfuser.PINN_Symbolic_Regressor(
@@ -64,7 +64,7 @@ u_true_mat = hcat(sol_true_extrapolation.u...)'
 LibInfuser.PINN_Extrapolator(
     infusing_problem,
     extrapolation_tspan,
-    1.0,
+    0.1,
     num_of_samples * 3,
     NN,
     (PINN_solu, trained_st),
