@@ -1,3 +1,6 @@
+using Pkg
+Pkg.instantiate()
+
 using JuliaFormatter
 
 is_formatted = format(".", verbose = false, overwrite = false);
