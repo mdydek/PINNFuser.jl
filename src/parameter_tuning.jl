@@ -12,7 +12,7 @@ println("Liczba dostępnych wątków: ", Threads.nthreads())
 rng = StableRNG(5958)
 tspan = (0.0, 7.0)
 num_of_samples = 300
-tsteps = range(5.0, 7.0, length=num_of_samples)
+tsteps = range(5.0, 7.0, length = num_of_samples)
 
 loaded_data = readdlm("src/data/original_data.txt")
 original_data = Array{Float64}(loaded_data)
@@ -35,8 +35,8 @@ function param_from_NN(u, p, st)
     y, _ = NN(u, p, st)
     Eₘₐₓ = 0.5 + abs(y[1]) * 2.0     # ~0.5–2.5
     Eₘᵢₙ = 0.01 + abs(y[2]) * 0.05   # ~0.01–0.06
-    Rs   = 5.0 + abs(y[3]) * 15.0    # ~5–20
-    Rmv  = 0.002 + abs(y[4]) * 0.01  # ~0.002–0.012
+    Rs = 5.0 + abs(y[3]) * 15.0    # ~5–20
+    Rmv = 0.002 + abs(y[4]) * 0.01  # ~0.002–0.012
     return Eₘₐₓ, Eₘᵢₙ, Rs, Rmv
 end
 
@@ -59,7 +59,7 @@ end
 
 function predict(p)
     prob = ODEProblem(model_ODE!, u0, tspan, p)
-    sol = solve(prob, Vern7(), dtmax=1e-2, saveat=tsteps, reltol=1e-7, abstol=1e-4)
+    sol = solve(prob, Vern7(), dtmax = 1e-2, saveat = tsteps, reltol = 1e-7, abstol = 1e-4)
     return sol
 end
 
@@ -83,27 +83,38 @@ function make_callback()
 end
 
 adtype = Optimization.AutoForwardDiff()
-optf = Optimization.OptimizationFunction((x,p) -> total_loss(x), adtype)
+optf = Optimization.OptimizationFunction((x, p) -> total_loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p)
 cb = make_callback()
 
-res = Optimization.solve(optprob, ADAM(0.001), callback=cb, maxiters=300)
+res = Optimization.solve(optprob, ADAM(0.001), callback = cb, maxiters = 300)
 println("\nTrening zakończony: final loss = ", total_loss(res.u))
 
 println("\nTrening zakończony: final loss = ", total_loss(res.u))
 
 println("\nPrzykładowe parametry wygenerowane przez NN po treningu:")
-for i in 1:5
+for i = 1:5
     u_sample = original_data[i, 1:7]
     Eₘₐₓ, Eₘᵢₙ, Rs, Rmv = param_from_NN(u_sample, res.u, st)
-    println("Stan ", i, ": Emax=$(round(Eₘₐₓ, digits=3)), Emin=$(round(Eₘᵢₙ, digits=3)), Rs=$(round(Rs, digits=3)), Rmv=$(round(Rmv, digits=5))")
+    println(
+        "Stan ",
+        i,
+        ": Emax=$(round(Eₘₐₓ, digits=3)), Emin=$(round(Eₘᵢₙ, digits=3)), Rs=$(round(Rs, digits=3)), Rmv=$(round(Rmv, digits=5))",
+    )
 end
 
 tspan2 = (0.0, 60.0)
-tsteps2 = range(0.0, 60.0, length=9000)
+tsteps2 = range(0.0, 60.0, length = 9000)
 trained_prob = ODEProblem(model_ODE!, u0, tspan2, res.u)
-sol_trained = solve(trained_prob, Vern7(), dtmax=1e-2, saveat=tsteps2, reltol=1e-7, abstol=1e-4)
+sol_trained = solve(
+    trained_prob,
+    Vern7(),
+    dtmax = 1e-2,
+    saveat = tsteps2,
+    reltol = 1e-7,
+    abstol = 1e-4,
+)
 data_to_save = Array(sol_trained)'
 writedlm("src/data/NN_tuned_parameters_simulation.txt", data_to_save)
 

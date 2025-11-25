@@ -18,8 +18,8 @@ main_sol = solve(prob, Tsit5(); saveat = tsteps, reltol = 1e-4, abstol = 1e-7, d
 sys = ml.sys
 
 data_to_save = hcat(
-    main_sol[sys.LV.Pi + sys.LA.Pi],
-    main_sol[sys.Sas.Pi + sys.Sat.Pi],
+    main_sol[sys.LV.Pi+sys.LA.Pi],
+    main_sol[sys.Sas.Pi+sys.Sat.Pi],
     main_sol[sys.Svn.Pi],
     main_sol[sys.LV.V],
     main_sol[sys.LV.Qo],

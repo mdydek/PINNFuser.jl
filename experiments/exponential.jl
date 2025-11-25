@@ -11,7 +11,7 @@ u0 = [1.0, 0.0]  # y(0) = 1, dy/dt(0) = 0
 # Training range
 tspan = (0.0, 10.0)
 num_of_samples = 500
-tsteps = range(tspan[1], tspan[2], length=num_of_samples)
+tsteps = range(tspan[1], tspan[2], length = num_of_samples)
 
 # Analytical solution
 y_analytical(t) = exp(-t)
@@ -24,7 +24,7 @@ NN = Lux.Chain(
     Lux.Dense(1, 10, elu),
     Lux.Dense(10, 10, elu),
     Lux.Dense(10, 10, elu),
-    Lux.Dense(10, 1)
+    Lux.Dense(10, 1),
 )
 
 p, st = Lux.setup(rng, NN)
@@ -43,8 +43,15 @@ prob_NN = ODEProblem(simple_PINN!, u0, tspan, p)
 
 # --- Prediction function ---
 function predict(p)
-    temp_prob = remake(prob_NN, p=p)
-    temp_sol = solve(temp_prob, Vern7(), dtmax=1e-2, saveat=tsteps, reltol=1e-6, abstol=1e-6)
+    temp_prob = remake(prob_NN, p = p)
+    temp_sol = solve(
+        temp_prob,
+        Vern7(),
+        dtmax = 1e-2,
+        saveat = tsteps,
+        reltol = 1e-6,
+        abstol = 1e-6,
+    )
     return temp_sol
 end
 
@@ -68,7 +75,7 @@ function physics_loss(pred, p)
 end
 
 # --- Total loss ---
-function total_loss(p, λ=1.0)
+function total_loss(p, λ = 1.0)
     pred = predict(p)
     L_data = data_loss(pred, y_ground_truth)
     L_phys = physics_loss(pred, p)
@@ -90,9 +97,9 @@ adtype = Optimization.AutoForwardDiff()
 optf = Optimization.OptimizationFunction((x, p) -> total_loss(x, 1.0), adtype)
 optprob = Optimization.OptimizationProblem(optf, ComponentVector{Float64}(p))
 
-w1 = Optimization.solve(optprob, ADAM(0.01), callback=callback, maxiters=20)
+w1 = Optimization.solve(optprob, ADAM(0.01), callback = callback, maxiters = 20)
 optprob1 = Optimization.OptimizationProblem(optf, w1.u)
-PINN_sol = Optimization.solve(optprob1, ADAM(0.001), callback=callback, maxiters=20)
+PINN_sol = Optimization.solve(optprob1, ADAM(0.001), callback = callback, maxiters = 20)
 
 prediction = predict(PINN_sol.u)
 
@@ -100,8 +107,8 @@ prediction = predict(PINN_sol.u)
 y_pinn = prediction[1, :] # PINN prediction
 y_true = y_analytical.(tsteps) # Analytical solution
 
-plot(tsteps, y_true, label="Analytical y(t) = exp(-t)", lw=3)
-plot!(tsteps, y_pinn, label="PINN Prediction", lw=3, ls=:dash)
+plot(tsteps, y_true, label = "Analytical y(t) = exp(-t)", lw = 3)
+plot!(tsteps, y_pinn, label = "PINN Prediction", lw = 3, ls = :dash)
 xlabel!("t")
 ylabel!("y(t)")
 title!("Comparison: Analytical vs PINN")
@@ -109,7 +116,7 @@ savefig("exponential_plots/exponential_training.png")
 println("Plot saved as pinn_vs_analytical.png")
 
 # --- Loss function plot ---
-plot(1:length(losses), losses, label="Total Loss", lw=2, yscale=:log10, grid=true)
+plot(1:length(losses), losses, label = "Total Loss", lw = 2, yscale = :log10, grid = true)
 xlabel!("Iteration")
 ylabel!("Loss")
 title!("Training Loss Over Iterations")
@@ -120,18 +127,25 @@ println("Training loss plot saved as pinn_training_loss.png")
 # --- Extrapolation range ---
 tspan_extrap = (0.0, 50.0)
 num_extrap_points = 2000
-tsteps_extrap = range(tspan_extrap[1], tspan_extrap[2], length=num_extrap_points)
+tsteps_extrap = range(tspan_extrap[1], tspan_extrap[2], length = num_extrap_points)
 
 # Solve PINN on extrapolation range
-prob_extrap = remake(prob_NN, p=PINN_sol.u, tspan=tspan_extrap)
-sol_extrap = solve(prob_extrap, Vern7(), dtmax=1e-2, saveat=tsteps_extrap, reltol=1e-6, abstol=1e-6)
+prob_extrap = remake(prob_NN, p = PINN_sol.u, tspan = tspan_extrap)
+sol_extrap = solve(
+    prob_extrap,
+    Vern7(),
+    dtmax = 1e-2,
+    saveat = tsteps_extrap,
+    reltol = 1e-6,
+    abstol = 1e-6,
+)
 
 y_pinn_extrap = sol_extrap[1, :]
 y_true_extrap = y_analytical.(tsteps_extrap)
 
 # --- Plot extrapolation ---
-plot(tsteps_extrap, y_true_extrap, label="Analytical y(t) = exp(-t)", lw=3)
-plot!(tsteps_extrap, y_pinn_extrap, label="PINN Prediction", lw=3, ls=:dash)
+plot(tsteps_extrap, y_true_extrap, label = "Analytical y(t) = exp(-t)", lw = 3)
+plot!(tsteps_extrap, y_pinn_extrap, label = "PINN Prediction", lw = 3, ls = :dash)
 xlabel!("t")
 ylabel!("y(t)")
 title!("Extrapolation: Analytical vs PINN")
