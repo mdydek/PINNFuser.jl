@@ -1,7 +1,9 @@
 using DelimitedFiles, StableRNGs, OrdinaryDiffEq, Lux
 
-rng = StableRNG(5958)
 include("../src/lib/lib.jl")
+using .LibInfuser
+
+rng = StableRNG(5958)
 
 α = 1.1
 β = 0.4
@@ -78,7 +80,7 @@ prob_ODE = ODEProblem((du,u,p,t)->(du[1]=α*u[1]-β*u[1]*u[2]; du[2]=δ*u[1]*u[2
 sol_ODE = solve(prob_ODE, Tsit5(), saveat=new_tseps)
 ode_solution = hcat(sol_ODE.u...)'
 
-LibInfuser.PINN_Plotter(
+LibInfuser.PINN_Plotter.plot_PINN_results(
     pred_mat,
     data_noisy_mat,
     ode_solution,

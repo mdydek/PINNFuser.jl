@@ -1,7 +1,8 @@
 module PINNInfuser
 
-using Lux, StableRNGs, OptimizationOptimisers, ComponentArrays, LinearAlgebra
+using Lux, StableRNGs, Optimization, OptimizationOptimisers, ComponentArrays, LinearAlgebra
 using OrdinaryDiffEq, Statistics, ForwardDiff
+using Printf
 
 export PINN_Infuser
 
@@ -23,6 +24,7 @@ that includes both data fidelity and physical law adherence.
 - `learning_rate::Float64 = 0.001`: The learning rate for the optimizer.
 - `iters::Int = 1000`: The number of training iterations.
 - `rng::StableRNG` = StableRNG(5958): A random number generator for reproducibility.
+- `loss_logfile::String = "training_logs/loss_history.txt"`: File path to log loss history.
 
 # Returns
 - `Tuple{Any, Any}`: The trained parameters of the neural network.
@@ -36,7 +38,8 @@ function PINN_Infuser(
     learning_rate::Float64 = 0.001,
     optimizer = Adam,
     iters::Int = 1000,
-    rng::StableRNG = StableRNG(5958)
+    rng::StableRNG = StableRNG(5958),
+    loss_logfile::String = "training_logs/loss_history.txt"
 )::Tuple{Any, Any}
     p, st = Lux.setup(rng, nn)
     p = 0.1 * ComponentVector{Float64}(p)
@@ -96,13 +99,16 @@ function PINN_Infuser(
         return L_data
     end
 
+
     adtype = Optimization.AutoForwardDiff()
     optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
     optprob = Optimization.OptimizationProblem(optf, p)
     losses = Float64[]
+    
     callback = function(p, l)
         push!(losses, l)
         println("Iteration $(length(losses)): Loss = $(losses[end])")
+
         if early_stopping && length(losses) > 10 && abs(losses[end] - losses[end-10]) < 1e-3
             println("Early stopping at iteration $(length(losses)) with loss $(losses[end])")
             return true
@@ -110,8 +116,22 @@ function PINN_Infuser(
             return false
         end
     end
+
     trained_params = Optimization.solve(optprob, optimizer(learning_rate), callback=callback, maxiters=iters)
-    
+
+
+    folder = dirname(loss_logfile)
+    if folder != "" && !isdir(folder)
+        println("Creating directory for training logs: $folder")
+        mkpath(folder)
+    end
+
+    open(loss_logfile, "w") do io
+        for (i, L) in enumerate(losses)
+            @printf(io, "%d %.12f\n", i, L)
+        end
+    end
+
     return (trained_params.u, st)
 end
 
