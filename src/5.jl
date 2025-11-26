@@ -36,9 +36,9 @@ K = 5              # number of harmonics
 function fourier_features(t, K, T)
     features = Vector{Float64}(undef, 2K)
     base = 2π / T
-    for k in 1:K
+    for k = 1:K
         features[2k-1] = sin(base * k * t)
-        features[2k]   = cos(base * k * t)
+        features[2k] = cos(base * k * t)
     end
     return features
 end
@@ -50,7 +50,7 @@ NN = Lux.Chain(
     Lux.Dense(10, 10, tanh),
     Lux.Dense(10, 10, tanh),
     Lux.Dense(10, 10, tanh),
-    Lux.Dense(10, 7)
+    Lux.Dense(10, 7),
 )
 
 p, st = Lux.setup(rng, NN)
@@ -70,12 +70,15 @@ function NIK_PINN!(du, u, p_nn, t)
     delastance = simpleModel.DShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift)
 
     alfa = 0.1
-    du[1] = ((Qmv - Qav) * elastance + pLV / elastance * delastance) * (1 + alfa * NN_output[1])
-    du[2] = ((Qav - Qs ) / Csa) * (1 + alfa * NN_output[2])
+    du[1] =
+        ((Qmv - Qav) * elastance + pLV / elastance * delastance) * (1 + alfa * NN_output[1])
+    du[2] = ((Qav - Qs) / Csa) * (1 + alfa * NN_output[2])
     du[3] = ((Qs - Qmv) / Csv) * (1 + alfa * NN_output[3])
     du[4] = (Qmv - Qav) * (1 + alfa * NN_output[4])
-    du[5] = (simpleModel.Valve(Zao, (du[1] - du[2]), u[1] - u[2])) * (1 + alfa * NN_output[5])
-    du[6] = (simpleModel.Valve(Rmv, (du[3] - du[1]), u[3] - u[1])) * (1 + alfa * NN_output[6])
+    du[5] =
+        (simpleModel.Valve(Zao, (du[1] - du[2]), u[1] - u[2])) * (1 + alfa * NN_output[5])
+    du[6] =
+        (simpleModel.Valve(Rmv, (du[3] - du[1]), u[3] - u[1])) * (1 + alfa * NN_output[6])
     du[7] = ((du[2] - du[3]) / Rs) * (1 + alfa * NN_output[7])
 end
 
@@ -83,9 +86,15 @@ prob_NN = ODEProblem(NIK_PINN!, u0, tspan, p)
 
 # ===================== Prediction wrapper ===================== #
 function predict(p_nn)
-    temp_prob = remake(prob_NN, p=p_nn)
-    temp_sol = solve(temp_prob, Vern7(), dtmax=1e-2, saveat=tsteps,
-                     reltol=1e-7, abstol=1e-4)
+    temp_prob = remake(prob_NN, p = p_nn)
+    temp_sol = solve(
+        temp_prob,
+        Vern7(),
+        dtmax = 1e-2,
+        saveat = tsteps,
+        reltol = 1e-7,
+        abstol = 1e-4,
+    )
     return temp_sol
 end
 
@@ -101,7 +110,7 @@ function data_loss(pred, original)
     pressures_true = original[:, 1:4]
     lossplv = mean(abs2, pressures_pred[:, 1] - pressures_true[:, 1])
     losspsa = mean(abs2, pressures_pred[:, 2] - pressures_true[:, 2])
-    losspv  = mean(abs2, pressures_pred[:, 3] - pressures_true[:, 3])
+    losspv = mean(abs2, pressures_pred[:, 3] - pressures_true[:, 3])
     lossvlv = mean(abs2, pressures_pred[:, 4] - pressures_true[:, 4])
     return lossplv + losspsa + losspv + lossvlv
 end
@@ -120,7 +129,7 @@ function physics_loss(pred, p_nn)
     return loss / length(tsteps)
 end
 
-function total_loss(p_nn, λ=5)
+function total_loss(p_nn, λ = 5)
     pred = predict(p_nn)
     L_data = data_loss(pred, original_data)
     L_phys = physics_loss(pred, p_nn)
@@ -141,21 +150,19 @@ adtype = Optimization.AutoForwardDiff()
 optf = Optimization.OptimizationFunction((x, p) -> total_loss(x, 1.0), adtype)
 optprob = Optimization.OptimizationProblem(optf, ComponentVector{Float64}(p))
 
-w1 = Optimization.solve(optprob, ADAM(0.01), callback=callback, maxiters=100)
+w1 = Optimization.solve(optprob, ADAM(0.01), callback = callback, maxiters = 100)
 optprob1 = Optimization.OptimizationProblem(optf, w1.u)
-PINN_sol = Optimization.solve(optprob1, ADAM(0.001), callback=callback, maxiters=25)
+PINN_sol = Optimization.solve(optprob1, ADAM(0.001), callback = callback, maxiters = 25)
 
 # ===================== Extrapolation ===================== #
 tspan2 = (0.0, 20.0)
 num_of_samples = 3000
-tsteps = range(0.0, 20.0, length=num_of_samples)
+tsteps = range(0.0, 20.0, length = num_of_samples)
 
 p_trained = PINN_sol.u
 trained_NN = ODEProblem(NIK_PINN!, u0, tspan2, p_trained)
-s = solve(trained_NN, Vern7(), dtmax=1e-2, saveat=tsteps,
-          reltol=1e-7, abstol=1e-4)
+s = solve(trained_NN, Vern7(), dtmax = 1e-2, saveat = tsteps, reltol = 1e-7, abstol = 1e-4)
 
-data_to_save = hcat(s[1, :], s[2, :], s[3, :], s[4, :],
-                    s[5, :], s[6, :], s[7, :])
+data_to_save = hcat(s[1, :], s[2, :], s[3, :], s[4, :], s[5, :], s[6, :], s[7, :])
 writedlm("data/5_extrapolation.txt", data_to_save)
 println("Extrapolation saved to data/physics_pinn_extrapolation_5.txt")

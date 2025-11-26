@@ -267,8 +267,7 @@ for i = 1:length(tsteps)
             e[i] .* Espt .* (Vspt[i] .- Vdspt) .+
             (1 .- e[i]) .* P0spt .* (exp.(lambdaspt .* (Vspt[i] .- V0spt)) .- 1) .-
             e[i] .* Elvf .* (Vlv[i] .- Vspt[i] .- Vdlvf) .-
-            (1 .- e[i]) .* P0lvf .*
-            (exp.(lambdalvf .* (Vlv[i] .- Vspt[i] .- V0lvf)) .- 1) .+
+            (1 .- e[i]) .* P0lvf .* (exp.(lambdalvf .* (Vlv[i] .- Vspt[i] .- V0lvf)) .- 1) .+
             e[i] .* Ervf .* (Vrv[i] .+ Vspt[i] .- Vdrvf) .+
             (1 .- e[i]) .* P0rvf .* (exp.(lambdarvf .* (Vrv[i] .+ Vspt[i] .- V0rvf)) .- 1)
 

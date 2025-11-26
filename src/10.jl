@@ -11,7 +11,7 @@ println("Liczba dostępnych wątków: ", Threads.nthreads())
 rng = StableRNG(5958)
 tspan = (0.0, 7.0)
 num_of_samples = 300
-tsteps = range(5.0, 7.0, length=num_of_samples)
+tsteps = range(5.0, 7.0, length = num_of_samples)
 
 loaded_data = readdlm("src/data/original_data.txt")
 original_data = Array{Float64}(loaded_data)
@@ -26,7 +26,7 @@ NN = Lux.Chain(
     Lux.Dense(10, 10, tanh),
     Lux.Dense(10, 10, tanh),
     Lux.Dense(10, 10, tanh),
-    Lux.Dense(10, 7)
+    Lux.Dense(10, 7),
 )
 p, st = Lux.setup(rng, NN)
 p = 0 * ComponentVector{Float64}(p)
@@ -34,11 +34,11 @@ p = 0 * ComponentVector{Float64}(p)
 function NIK_PINN!(du, u, p, t, α)
     pLV, psa, psv, Vlv, Qav, Qmv, Qs = u
     τₑₛ, τₑₚ, Rmv, Zao, Rs, Csa, Csv, Eₘₐₓ, Eₘᵢₙ = params
-    
+
     du_phys = similar(u)
     elastance = simpleModel.ShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift)
     delastance = simpleModel.DShiElastance(t, Eₘᵢₙ, Eₘₐₓ, τ, τₑₛ, τₑₚ, Eshift)
-    
+
     du_phys[1] = ((Qmv - Qav) * elastance + pLV / elastance * delastance)
     du_phys[2] = ((Qav - Qs) / Csa)
     du_phys[3] = ((Qs - Qmv) / Csv)
@@ -48,14 +48,14 @@ function NIK_PINN!(du, u, p, t, α)
     du_phys[7] = (du_phys[2] - du_phys[3]) / Rs
 
     NN_output = NN(u, p, st)[1]
-    
-    for i in 1:7
+
+    for i = 1:7
         du[i] = du_phys[i] * (1 + α * tanh(NN_output[i]))
     end
 end
 function predict(p, α)
     prob = ODEProblem((du, u, p, t) -> NIK_PINN!(du, u, p, t, α), u0, tspan, p)
-    sol = solve(prob, Vern7(), dtmax=1e-2, saveat=tsteps, reltol=1e-7, abstol=1e-4)
+    sol = solve(prob, Vern7(), dtmax = 1e-2, saveat = tsteps, reltol = 1e-7, abstol = 1e-4)
     return sol
 end
 
@@ -68,7 +68,7 @@ end
 function data_loss(pred, original)
     pressures_pred, _ = split_pred(pred)
     pressures_true = original[:, 1:4]
-    return sum([mean(abs2, pressures_pred[:, i] .- pressures_true[:, i]) for i in 1:4])
+    return sum([mean(abs2, pressures_pred[:, i] .- pressures_true[:, i]) for i = 1:4])
 end
 
 function physics_loss(pred, p, α)
@@ -96,17 +96,19 @@ function physics_loss(pred, p, α)
     return loss / (length(tsteps) * 7)
 end
 
-function total_loss(p, α; λ=40)
+function total_loss(p, α; λ = 40)
     pred = predict(p, α)
     return data_loss(pred, original_data) + λ * physics_loss(pred, p, α)
 end
 
-function make_callback(α; print_every=10)
+function make_callback(α; print_every = 10)
     iter = Ref(0)
     return function (p, l)
         if iter[] % print_every == 0
             tid = Threads.threadid()
-            println("    [α=$(α), wątek $tid] iter=$(iter[])  |  loss=$(round(l, sigdigits=6))")
+            println(
+                "    [α=$(α), wątek $tid] iter=$(iter[])  |  loss=$(round(l, sigdigits=6))",
+            )
         end
         iter[] += 1
         return false
@@ -114,24 +116,24 @@ function make_callback(α; print_every=10)
 end
 
 alphas = [0.1, 0.3, 0.8]
-results = Vector{Tuple{Float64, Float64, ComponentVector{Float64}}}(undef, length(alphas))
+results = Vector{Tuple{Float64,Float64,ComponentVector{Float64}}}(undef, length(alphas))
 
-@threads for i in 1:length(alphas)
+@threads for i = 1:length(alphas)
     α = alphas[i]
     println("==> Start treningu dla α = $α (wątek $(threadid()))")
-    
-    cb = make_callback(α, print_every=3)
+
+    cb = make_callback(α, print_every = 3)
     adtype = Optimization.AutoForwardDiff()
-    optf = Optimization.OptimizationFunction((x,p) -> total_loss(x, α), adtype)
+    optf = Optimization.OptimizationFunction((x, p) -> total_loss(x, α), adtype)
     optprob = Optimization.OptimizationProblem(optf, ComponentVector{Float64}(p))
-    
-    w = Optimization.solve(optprob, ADAM(0.01), callback=cb, maxiters=300)
+
+    w = Optimization.solve(optprob, ADAM(0.01), callback = cb, maxiters = 300)
     optprob2 = Optimization.OptimizationProblem(optf, w.u)
-    final_sol = Optimization.solve(optprob2, ADAM(0.001), callback=cb, maxiters=20)
-    
+    final_sol = Optimization.solve(optprob2, ADAM(0.001), callback = cb, maxiters = 20)
+
     final_loss = total_loss(final_sol.u, α)
     results[i] = (α, final_loss, final_sol.u)
-    
+
     println("==> α = $α zakończony, loss = $final_loss")
 end
 
@@ -142,9 +144,10 @@ println("\nNajlepszy α = $best_alpha z loss = $best_loss")
 PINN_sol_u = best_params
 
 tspan2 = (0.0, 60.0)
-tsteps2 = range(0.0, 60.0, length=9000)
-trained_NN = ODEProblem((du,u,p,t)->NIK_PINN!(du,u,p,t,best_alpha), u0, tspan2, PINN_sol_u)
-s = solve(trained_NN, Vern7(), dtmax=1e-2, saveat=tsteps2, reltol=1e-7, abstol=1e-4)
+tsteps2 = range(0.0, 60.0, length = 9000)
+trained_NN =
+    ODEProblem((du, u, p, t) -> NIK_PINN!(du, u, p, t, best_alpha), u0, tspan2, PINN_sol_u)
+s = solve(trained_NN, Vern7(), dtmax = 1e-2, saveat = tsteps2, reltol = 1e-7, abstol = 1e-4)
 data_to_save = hcat(s[1, :], s[2, :], s[3, :], s[4, :], s[5, :], s[6, :], s[7, :])
 writedlm("src/data/5_full_physics.txt", data_to_save)
 

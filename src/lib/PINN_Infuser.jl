@@ -36,17 +36,18 @@ function PINN_Infuser(
     learning_rate::Float64 = 0.001,
     optimizer = Adam,
     iters::Int = 1000,
-    rng::StableRNG = StableRNG(5958)
-)::Tuple{Any, Any}
+    rng::StableRNG = StableRNG(5958),
+)::Tuple{Any,Any}
     p, st = Lux.setup(rng, nn)
     p = 0.1 * ComponentVector{Float64}(p)
 
-    U_MEAN = vec(mean(target_data, dims=1))
-    U_STD  = vec(std(target_data, dims=1)) .+ 1e-6
+    U_MEAN = vec(mean(target_data, dims = 1))
+    U_STD = vec(std(target_data, dims = 1)) .+ 1e-6
 
     ode_f = ode_problem.f
     original_p = ode_problem.p
-    tsteps = range(ode_problem.tspan[1], ode_problem.tspan[2], length=size(target_data, 1))
+    tsteps =
+        range(ode_problem.tspan[1], ode_problem.tspan[2], length = size(target_data, 1))
 
     function pinn_ode!(du, u, p, t)
         nn_input = (u .- U_MEAN) ./ U_STD
@@ -58,8 +59,8 @@ function PINN_Infuser(
     prob_PINN = ODEProblem(pinn_ode!, ode_problem.u0, ode_problem.tspan, p)
 
     function predict(p)
-        temp_prob = remake(prob_PINN, p=p)
-        temp_sol = solve(temp_prob, Tsit5(), saveat=tsteps, reltol=1e-6, abstol=1e-6)
+        temp_prob = remake(prob_PINN, p = p)
+        temp_sol = solve(temp_prob, Tsit5(), saveat = tsteps, reltol = 1e-6, abstol = 1e-6)
         return temp_sol
     end
 
@@ -71,21 +72,21 @@ function PINN_Infuser(
     function physics_loss(pred, p)
         pred_mat = hcat(pred.u...)'
         l = 0.0
-        
+
         for (i, t) in enumerate(tsteps)
             u = pred_mat[i, :]
             nn_output = nn(u, p, st)[1]
-            
+
             u_val = ForwardDiff.value.(u)
             du_original = similar(u, Float64)
             ode_f(du_original, u_val, original_p, t)
-            
+
             modulation = alfa .* (1 .+ sin.(3.14 .* nn_output))
             du_modified = du_original .* modulation
-            
+
             l += sum(abs2.(du_modified .- du_original))
         end
-        
+
         return l
     end
 
@@ -100,18 +101,23 @@ function PINN_Infuser(
     optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
     optprob = Optimization.OptimizationProblem(optf, p)
     losses = Float64[]
-    callback = function(p, l)
+    callback = function (p, l)
         push!(losses, l)
         println("Iteration $(length(losses)): Loss = $(losses[end])")
         if early_stopping && length(losses) > 10 && abs(losses[end] - losses[end-10]) < 1e-3
             println("Early stopping at iteration $(length(losses)) with loss $(losses[end])")
             return true
-        else 
+        else
             return false
         end
     end
-    trained_params = Optimization.solve(optprob, optimizer(learning_rate), callback=callback, maxiters=iters)
-    
+    trained_params = Optimization.solve(
+        optprob,
+        optimizer(learning_rate),
+        callback = callback,
+        maxiters = iters,
+    )
+
     return (trained_params.u, st)
 end
 
