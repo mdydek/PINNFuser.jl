@@ -42,7 +42,7 @@ infusing_problem = ODEProblem(lv_to_infuse!, u0, tspan)
     NN,
     data_noisy_mat,
     physics_weight = 0.001,
-    iters=250,
+    iters = 250,
 )
 
 # LibInfuser.PINN_Symbolic_Regressor(
