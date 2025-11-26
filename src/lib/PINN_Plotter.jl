@@ -39,30 +39,45 @@ function plot_PINN_results(
     xlabel::String,
     ylabel::String,
     title::String,
-    filename::String
+    filename::String,
 )
 
-num_of_equations = size(infused_matrix, 2)
+    num_of_equations = size(infused_matrix, 2)
 
-if length(labels) % num_of_equations != 0
-    error("Number of labels must be a multiple of number of equations")
-end
+    if length(labels) % num_of_equations != 0
+        error("Number of labels must be a multiple of number of equations")
+    end
 
-plot(data_steps, data[:, 1], label=labels[1], seriestype=:scatter, markersize=2, markerstrokewidth=0, legend=:topright)
-plot!(extrapolation_tseps, infused_matrix[:, 1], label=labels[2])
-plot!(extrapolation_tseps, ode_solution[:, 1], label=labels[3])
+    plot(
+        data_steps,
+        data[:, 1],
+        label = labels[1],
+        seriestype = :scatter,
+        markersize = 2,
+        markerstrokewidth = 0,
+        legend = :topright,
+    )
+    plot!(extrapolation_tseps, infused_matrix[:, 1], label = labels[2])
+    plot!(extrapolation_tseps, ode_solution[:, 1], label = labels[3])
 
-for i in 2:num_of_equations
-    plot!(data_steps, data[:,i], label=labels[i * 3 - 2], seriestype=:scatter, markersize=2, markerstrokewidth=0)
-    plot!(extrapolation_tseps, infused_matrix[:, i], label=labels[i * 3 - 1])
-    plot!(extrapolation_tseps, ode_solution[:, i], label=labels[i * 3])
-end
+    for i = 2:num_of_equations
+        plot!(
+            data_steps,
+            data[:, i],
+            label = labels[i*3-2],
+            seriestype = :scatter,
+            markersize = 2,
+            markerstrokewidth = 0,
+        )
+        plot!(extrapolation_tseps, infused_matrix[:, i], label = labels[i*3-1])
+        plot!(extrapolation_tseps, ode_solution[:, i], label = labels[i*3])
+    end
 
-xlabel!(xlabel)
-ylabel!(ylabel)
-title!(title)
-savefig("$filename")
-println("Plot saved as $filename")
+    xlabel!(xlabel)
+    ylabel!(ylabel)
+    title!(title)
+    savefig("$filename")
+    println("Plot saved as $filename")
 
 end
 

@@ -14,10 +14,7 @@ Wraps a pre-trained neural network into an ODE problem for symbolic regression.
 - `pretrained_params::Tuple{Any, Any}`: The trained parameters of the neural
 network.
 """
-function PINN_Symbolic_Regressor(
-    nn::Lux.Chain,
-    pretrained_params::Tuple{Any, Any},
-)
+function PINN_Symbolic_Regressor(nn::Lux.Chain, pretrained_params::Tuple{Any,Any})
 
     trained_u, trained_st = pretrained_params
     num_samples = 500
@@ -27,24 +24,24 @@ function PINN_Symbolic_Regressor(
     y_matrix = nn(X_lux, trained_u, trained_st)[1]
 
     X_mlj = transpose(X_lux)
-    
+
     out_dims = size(y_matrix, 1)
-        
+
     sr_model = SRRegressor(
-        niterations=500,
-        binary_operators=[+, -, *, /],
-        unary_operators=[cos, exp, sin],
-        maxsize=15
+        niterations = 500,
+        binary_operators = [+, -, *, /],
+        unary_operators = [cos, exp, sin],
+        maxsize = 15,
     )
 
-    for j in 1:out_dims
+    for j = 1:out_dims
         println("\n--- Finding equation for Output $j ---")
-        
+
         y_j_mlj = vec(y_matrix[j, :])
-        
+
         mach = machine(sr_model, X_mlj, y_j_mlj)
         fit!(mach)
-        
+
         report(mach)
     end
 end

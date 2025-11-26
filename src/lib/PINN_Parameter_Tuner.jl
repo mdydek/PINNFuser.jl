@@ -48,7 +48,7 @@ function PINN_Parameter_Tuner(
     optimizer = ADAM,
     iters::Int = 1000,
     rng = StableRNG(1234),
-    nn::Union{Nothing, Lux.Chain} = nothing
+    nn::Union{Nothing,Lux.Chain} = nothing,
 )
 
     nin = length(u0)
@@ -59,14 +59,14 @@ function PINN_Parameter_Tuner(
         nn = Lux.Chain(
             Lux.Dense(nin, 32, tanh),
             Lux.Dense(32, 32, tanh),
-            Lux.Dense(32, nout)
+            Lux.Dense(32, nout),
         )
     end
 
     nn_params, st = Lux.setup(rng, nn)
     nn_params = 0 * ComponentVector{Float64}(nn_params)
-    
-    tsteps = range(tspan[1], tspan[2], length=size(target_data,1))
+
+    tsteps = range(tspan[1], tspan[2], length = size(target_data, 1))
 
     function param_from_NN(u, p, st)
         y, _ = nn(u, p, st)
@@ -79,7 +79,7 @@ function PINN_Parameter_Tuner(
             pars[idx] = minv + abs(y[k]) * (maxv - minv)
         end
 
-        for i in 1:length(initial_params)
+        for i = 1:length(initial_params)
             if !(i in tune_params)
                 pars[i] = initial_params[i]
             end
@@ -95,13 +95,13 @@ function PINN_Parameter_Tuner(
 
     function predict(nn_p)
         prob = ODEProblem(wrapped_ODE!, u0, tspan, nn_p)
-        solve(prob, Vern7(), dtmax=1e-2, saveat=tsteps, reltol=1e-6, abstol=1e-6)
+        solve(prob, Vern7(), dtmax = 1e-2, saveat = tsteps, reltol = 1e-6, abstol = 1e-6)
     end
 
     function loss(p)
         sol = predict(p)
         pred = Array(sol)
-        ydim = min(size(pred,1), size(target_data,2))
+        ydim = min(size(pred, 1), size(target_data, 2))
 
         pred_slice = pred[1:ydim, :]'
         true_slice = target_data[:, 1:ydim]
@@ -122,11 +122,15 @@ function PINN_Parameter_Tuner(
     cb = make_callback()
 
     adtype = Optimization.AutoForwardDiff()
-    optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
+    optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
     optprob = Optimization.OptimizationProblem(optf, nn_params)
 
-    res = Optimization.solve(optprob, optimizer(learning_rate),
-                             callback=cb, maxiters=iters)
+    res = Optimization.solve(
+        optprob,
+        optimizer(learning_rate),
+        callback = cb,
+        maxiters = iters,
+    )
 
     final_params = param_from_NN(target_data[1, 1:length(u0)], res.u, st)
 

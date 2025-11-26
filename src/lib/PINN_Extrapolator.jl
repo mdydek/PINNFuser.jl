@@ -22,15 +22,15 @@ This function takes a pre-trained neural network's parameters (`pretrained_param
 """
 function PINN_Extrapolator(
     base_problem::SciMLBase.ODEProblem,
-    tspan::Tuple{Float64, Float64},
+    tspan::Tuple{Float64,Float64},
     alpha::Float64,
     num_of_samples::Int,
     nn::Lux.Chain,
-    pretrained_params::Tuple{Any, Any},
-    path_to_save::String
+    pretrained_params::Tuple{Any,Any},
+    path_to_save::String,
 )::Nothing
     trained_u, trained_st = pretrained_params
-    new_tseps = range(tspan[1], tspan[2], length=num_of_samples)
+    new_tseps = range(tspan[1], tspan[2], length = num_of_samples)
 
     function pinn_ode!(du, u, p, t)
         nn_output = nn(u, trained_u, trained_st)[1]
@@ -40,7 +40,8 @@ function PINN_Extrapolator(
 
     pinn_problem = ODEProblem(pinn_ode!, base_problem.u0, tspan)
 
-    solved_pinn = solve(pinn_problem, Tsit5(), saveat=new_tseps, reltol=1e-6, abstol=1e-6)
+    solved_pinn =
+        solve(pinn_problem, Tsit5(), saveat = new_tseps, reltol = 1e-6, abstol = 1e-6)
 
     pred_mat = hcat(solved_pinn.u...)'
 

@@ -48,12 +48,13 @@ function PINN_Infuser(
     p, st = Lux.setup(rng, nn)
     p = 0.1 * ComponentVector{Float64}(p)
 
-    U_MEAN = vec(mean(target_data, dims=1))
-    U_STD  = vec(std(target_data, dims=1)) .+ 1e-6
+    U_MEAN = vec(mean(target_data, dims = 1))
+    U_STD = vec(std(target_data, dims = 1)) .+ 1e-6
 
     ode_f = ode_problem.f
     original_p = ode_problem.p
-    tsteps = range(ode_problem.tspan[1], ode_problem.tspan[2], length=size(target_data, 1))
+    tsteps =
+        range(ode_problem.tspan[1], ode_problem.tspan[2], length = size(target_data, 1))
 
     function pinn_ode!(du, u, p, t)
         nn_input = (u .- U_MEAN) ./ U_STD
@@ -78,21 +79,21 @@ function PINN_Infuser(
     function physics_loss(pred, p)
         pred_mat = hcat(pred.u...)'
         l = 0.0
-        
+
         for (i, t) in enumerate(tsteps)
             u = pred_mat[i, :]
             nn_output = nn(u, p, st)[1]
-            
+
             u_val = ForwardDiff.value.(u)
             du_original = similar(u, Float64)
             ode_f(du_original, u_val, original_p, t)
             
             modulation = nn_output_weight .* (1 .+ tanh.(nn_output))
             du_modified = du_original .* modulation
-            
+
             l += sum(abs2.(du_modified .- du_original))
         end
-        
+
         return l
     end
 
@@ -116,7 +117,7 @@ function PINN_Infuser(
         if early_stopping && length(losses) > 10 && abs(losses[end] - losses[end-10]) < 1e-3
             println("Early stopping at iteration $(length(losses)) with loss $(losses[end])")
             return true
-        else 
+        else
             return false
         end
     end
