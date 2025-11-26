@@ -45,6 +45,7 @@ infusing_problem = ODEProblem(lv_to_infuse!, u0, tspan)
     infusing_problem,
     NN,
     data_noisy_mat,
+    physics_weight = 0.001,
     iters=250,
 )
 
@@ -80,7 +81,7 @@ prob_ODE = ODEProblem((du,u,p,t)->(du[1]=α*u[1]-β*u[1]*u[2]; du[2]=δ*u[1]*u[2
 sol_ODE = solve(prob_ODE, Tsit5(), saveat=new_tseps)
 ode_solution = hcat(sol_ODE.u...)'
 
-LibInfuser.PINN_Plotter.plot_PINN_results(
+LibInfuser.PINNPlotter.plot_PINN_results(
     pred_mat,
     data_noisy_mat,
     ode_solution,

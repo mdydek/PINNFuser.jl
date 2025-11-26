@@ -7,7 +7,7 @@ using Printf
 export PINN_Infuser
 
 """
-    PINN_Infuser(ode_problem, nn, loss, target_data; alfa=0.1, optimizer=ADAM(), ...)
+    PINN_Infuser(ode_problem, nn, loss, target_data; nn_output_weight=0.1, physics_weight = 1.0, optimizer=ADAM(), ...)
 
 Trains a Physics-Informed Neural Network (PINN) by minimizing a composite loss function
 that includes both data fidelity and physical law adherence.
@@ -19,7 +19,8 @@ that includes both data fidelity and physical law adherence.
 
 # Keyword Arguments
 - `early_stopping::Bool = true`: Whether to enable early stopping based on loss convergence.
-- `alpha::Float64 = 0.1`: The weight factor for the NN infusion in ODE.
+- `nn_output_weight::Float64 = 0.1`: The weight factor for the NN infusion in ODE.
+- `physics_weight::Float64 = 1.0`: The weight of the physics-based loss component.
 - `optimizer = OptimizationOptimisers.Adam`: The optimization algorithm to use.
 - `learning_rate::Float64 = 0.001`: The learning rate for the optimizer.
 - `iters::Int = 1000`: The number of training iterations.
@@ -34,9 +35,12 @@ function PINN_Infuser(
     nn::Lux.Chain,
     target_data::AbstractMatrix{Float64};
     early_stopping::Bool = true,
-    alpha::Float64 = 0.1,
+    nn_output_weight::Float64 = 0.1,
+    physics_weight::Float64 = 1.0,
     learning_rate::Float64 = 0.001,
     optimizer = Adam,
+    reltol::Float64 = 1e-6,
+    abstol::Float64 = 1e-6,
     iters::Int = 1000,
     rng::StableRNG = StableRNG(5958),
     loss_logfile::String = "training_logs/loss_history.txt"
@@ -55,14 +59,14 @@ function PINN_Infuser(
         nn_input = (u .- U_MEAN) ./ U_STD
         nn_output = nn(nn_input, p, st)[1]
         ode_f(du, u, original_p, t)
-        du .*= 1 .+ (alpha .* sin.(nn_output))
+        du .*= 1 .+ (nn_output_weight .* tanh.(nn_output))
     end
 
     prob_PINN = ODEProblem(pinn_ode!, ode_problem.u0, ode_problem.tspan, p)
 
     function predict(p)
         temp_prob = remake(prob_PINN, p=p)
-        temp_sol = solve(temp_prob, Tsit5(), saveat=tsteps, reltol=1e-6, abstol=1e-6)
+        temp_sol = solve(temp_prob, Vern7(), saveat=tsteps, reltol=reltol, abstol=abstol)
         return temp_sol
     end
 
@@ -83,7 +87,7 @@ function PINN_Infuser(
             du_original = similar(u, Float64)
             ode_f(du_original, u_val, original_p, t)
             
-            modulation = alfa .* (1 .+ sin.(3.14 .* nn_output))
+            modulation = nn_output_weight .* (1 .+ tanh.(nn_output))
             du_modified = du_original .* modulation
             
             l += sum(abs2.(du_modified .- du_original))
@@ -95,8 +99,8 @@ function PINN_Infuser(
     function loss(p)
         pred = predict(p)
         L_data = data_loss(pred, target_data)
-        # L_phys = physics_loss(pred, p)
-        return L_data
+        L_phys = physics_loss(pred, p)
+        return L_data + physics_weight * L_phys
     end
 
 
@@ -119,7 +123,7 @@ function PINN_Infuser(
 
     trained_params = Optimization.solve(optprob, optimizer(learning_rate), callback=callback, maxiters=iters)
 
-
+    # Save loss history
     folder = dirname(loss_logfile)
     if folder != "" && !isdir(folder)
         println("Creating directory for training logs: $folder")
