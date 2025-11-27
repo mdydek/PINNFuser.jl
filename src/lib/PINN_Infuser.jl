@@ -43,8 +43,8 @@ function PINN_Infuser(
     abstol::Float64 = 1e-6,
     iters::Int = 1000,
     rng::StableRNG = StableRNG(5958),
-    loss_logfile::String = "training_logs/loss_history.txt"
-)::Tuple{Any, Any}
+    loss_logfile::String = "training_logs/loss_history.txt",
+)::Tuple{Any,Any}
     p, st = Lux.setup(rng, nn)
     p = 0.1 * ComponentVector{Float64}(p)
 
@@ -66,8 +66,9 @@ function PINN_Infuser(
     prob_PINN = ODEProblem(pinn_ode!, ode_problem.u0, ode_problem.tspan, p)
 
     function predict(p)
-        temp_prob = remake(prob_PINN, p=p)
-        temp_sol = solve(temp_prob, Vern7(), saveat=tsteps, reltol=reltol, abstol=abstol)
+        temp_prob = remake(prob_PINN, p = p)
+        temp_sol =
+            solve(temp_prob, Vern7(), saveat = tsteps, reltol = reltol, abstol = abstol)
         return temp_sol
     end
 
@@ -87,7 +88,7 @@ function PINN_Infuser(
             u_val = ForwardDiff.value.(u)
             du_original = similar(u, Float64)
             ode_f(du_original, u_val, original_p, t)
-            
+
             modulation = nn_output_weight .* (1 .+ tanh.(nn_output))
             du_modified = du_original .* modulation
 
@@ -109,8 +110,8 @@ function PINN_Infuser(
     optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
     optprob = Optimization.OptimizationProblem(optf, p)
     losses = Float64[]
-    
-    callback = function(p, l)
+
+    callback = function (p, l)
         push!(losses, l)
         println("Iteration $(length(losses)): Loss = $(losses[end])")
 
@@ -122,7 +123,12 @@ function PINN_Infuser(
         end
     end
 
-    trained_params = Optimization.solve(optprob, optimizer(learning_rate), callback=callback, maxiters=iters)
+    trained_params = Optimization.solve(
+        optprob,
+        optimizer(learning_rate),
+        callback = callback,
+        maxiters = iters,
+    )
 
     # Save loss history
     folder = dirname(loss_logfile)

@@ -51,7 +51,7 @@ function PINN_Parameter_Tuner(
     iters::Int = 1000,
     rng = StableRNG(1234),
     loss_logfile::String = "training_logs/loss_history.txt",
-    nn::Union{Nothing, Lux.Chain} = nothing
+    nn::Union{Nothing,Lux.Chain} = nothing,
 )
 
     nin = length(u0)

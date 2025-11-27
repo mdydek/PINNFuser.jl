@@ -105,7 +105,7 @@ function plot_loss(
     ylabel::String = "Loss",
     title::String = "Training Loss",
     plotfile::String = "plots/loss_plot.png",
-    logscale::Bool = false
+    logscale::Bool = false,
 )
     folder = dirname(plotfile)
     if folder != "" && !isdir(folder)
@@ -126,25 +126,31 @@ function plot_loss(
         end
     end
 
-     if logscale
-        plot(iter, losses,
-             yscale=:log10,
-             label="Loss",
-             xlabel=xlabel,
-             ylabel=ylabel,
-             title=title,
-             seriestype=:scatter,
-             markersize=4,
-             legend=:topright)
+    if logscale
+        plot(
+            iter,
+            losses,
+            yscale = :log10,
+            label = "Loss",
+            xlabel = xlabel,
+            ylabel = ylabel,
+            title = title,
+            seriestype = :scatter,
+            markersize = 4,
+            legend = :topright,
+        )
     else
-        plot(iter, losses,
-             label="Loss",
-             xlabel=xlabel,
-             ylabel=ylabel,
-             title=title,
-             seriestype=:scatter,
-             markersize=4,
-             legend=:topright)
+        plot(
+            iter,
+            losses,
+            label = "Loss",
+            xlabel = xlabel,
+            ylabel = ylabel,
+            title = title,
+            seriestype = :scatter,
+            markersize = 4,
+            legend = :topright,
+        )
     end
 
     savefig(plotfile)
