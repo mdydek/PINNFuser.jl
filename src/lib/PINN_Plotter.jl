@@ -29,7 +29,7 @@ between the neural network-enhanced predictions and both the original data and b
 - `title::String`: Title for the plot.
 - `filename::String`: The file path where the plot will be saved (e.g., "comparison_plot.png").
 """
-function PINN_Plotter(
+function plot_PINN_results(
     infused_matrix::AbstractMatrix{Float64},
     data::AbstractMatrix{Float64},
     ode_solution::AbstractMatrix{Float64},
@@ -80,5 +80,82 @@ function PINN_Plotter(
     println("Plot saved as $filename")
 
 end
+
+
+"""
+    plot_loss(lossfile; xlabel="Epoch", ylabel="Loss", title="Training Loss",
+                        plotfile="plots/loss_plot.png", logscale=false)
+
+Reads a loss history from a text file and plots it.
+
+# Arguments
+- `lossfile::String`: Path to the text file containing loss history. 
+  Expected format: each line "iteration loss_value"
+
+# Keyword Arguments
+- `xlabel::String="Epoch"`: Label for the x-axis.
+- `ylabel::String="Loss"`: Label for the y-axis.
+- `title::String="Training Loss"`: Plot title.
+- `plotfile::String="plots/loss_plot.png"`: Path to save the plot.
+- `logscale::Bool=false`: Use logarithmic scale for y-axis.
+"""
+function plot_loss(
+    lossfile::String;
+    xlabel::String = "Epoch",
+    ylabel::String = "Loss",
+    title::String = "Training Loss",
+    plotfile::String = "plots/loss_plot.png",
+    logscale::Bool = false,
+)
+    folder = dirname(plotfile)
+    if folder != "" && !isdir(folder)
+        println("Creating folder for plot: $folder")
+        mkpath(folder)
+    end
+
+    iter, losses = Float64[], Float64[]
+    open(lossfile, "r") do io
+        for line in eachline(io)
+            line = strip(line)
+            if isempty(line) || startswith(line, "#")
+                continue
+            end
+            i, l = split(line)
+            push!(iter, parse(Float64, i))
+            push!(losses, parse(Float64, l))
+        end
+    end
+
+    if logscale
+        plot(
+            iter,
+            losses,
+            yscale = :log10,
+            label = "Loss",
+            xlabel = xlabel,
+            ylabel = ylabel,
+            title = title,
+            seriestype = :scatter,
+            markersize = 4,
+            legend = :topright,
+        )
+    else
+        plot(
+            iter,
+            losses,
+            label = "Loss",
+            xlabel = xlabel,
+            ylabel = ylabel,
+            title = title,
+            seriestype = :scatter,
+            markersize = 4,
+            legend = :topright,
+        )
+    end
+
+    savefig(plotfile)
+    println("Loss plot saved as $plotfile")
+end
+
 
 end # module PINNPlotter

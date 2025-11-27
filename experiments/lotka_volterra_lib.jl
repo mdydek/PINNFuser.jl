@@ -1,7 +1,9 @@
 using DelimitedFiles, StableRNGs, OrdinaryDiffEq, Lux
 
-rng = StableRNG(5958)
 include("../src/lib/lib.jl")
+using .LibInfuser
+
+rng = StableRNG(5958)
 
 α = 1.1
 β = 0.4
@@ -35,8 +37,13 @@ end
 
 infusing_problem = ODEProblem(lv_to_infuse!, u0, tspan)
 
-(PINN_solu, trained_st) =
-    LibInfuser.PINN_Infuser(infusing_problem, NN, data_noisy_mat, iters = 250)
+(PINN_solu, trained_st) = LibInfuser.PINN_Infuser(
+    infusing_problem,
+    NN,
+    data_noisy_mat,
+    physics_weight = 0.001,
+    iters = 250,
+)
 
 # LibInfuser.PINN_Symbolic_Regressor(
 #     NN,
@@ -76,7 +83,7 @@ prob_ODE = ODEProblem(
 sol_ODE = solve(prob_ODE, Tsit5(), saveat = new_tseps)
 ode_solution = hcat(sol_ODE.u...)'
 
-LibInfuser.PINN_Plotter(
+LibInfuser.PINNPlotter.plot_PINN_results(
     pred_mat,
     data_noisy_mat,
     ode_solution,

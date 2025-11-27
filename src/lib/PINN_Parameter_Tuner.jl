@@ -6,6 +6,7 @@ using ComponentArrays
 using Optimization
 using OptimizationOptimisers
 using Statistics
+using Printf
 
 export PINN_Parameter_Tuner
 
@@ -29,6 +30,7 @@ Trains a neural network to tune selected constant parameters of an ODE model.
 - `optimizer = ADAM`: Optimization algorithm (e.g., ADAM, RMSProp).
 - `iters::Int = 1000`: Number of training iterations.
 - `rng = StableRNG(1234)`: Random number generator for reproducibility.
+- `loss_logfile::String = "training_logs/loss_history.txt"`: File path to log loss history.
 - `nn::Union{Nothing, Lux.Chain} = nothing`: Optional user-provided neural network. If `nothing`, a default network is created.
 
 # Returns
@@ -48,6 +50,7 @@ function PINN_Parameter_Tuner(
     optimizer = ADAM,
     iters::Int = 1000,
     rng = StableRNG(1234),
+    loss_logfile::String = "training_logs/loss_history.txt",
     nn::Union{Nothing,Lux.Chain} = nothing,
 )
 
@@ -109,9 +112,12 @@ function PINN_Parameter_Tuner(
         mean(abs2, pred_slice .- true_slice)
     end
 
-    function make_callback()
+    losses = Float64[]
+
+    function callback()
         iter = Ref(0)
         return function (p, l)
+            push!(losses, l)
             if iter[] % 1 == 0
                 println("iter $(iter[]) | loss = $(round(l, sigdigits=5))")
             end
@@ -119,7 +125,7 @@ function PINN_Parameter_Tuner(
             return false
         end
     end
-    cb = make_callback()
+    cb = callback()
 
     adtype = Optimization.AutoForwardDiff()
     optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
@@ -133,6 +139,19 @@ function PINN_Parameter_Tuner(
     )
 
     final_params = param_from_NN(target_data[1, 1:length(u0)], res.u, st)
+
+    # Save loss history
+    folder = dirname(loss_logfile)
+    if folder != "" && !isdir(folder)
+        println("Creating directory for training logs: $folder")
+        mkpath(folder)
+    end
+
+    open(loss_logfile, "w") do io
+        for (i, L) in enumerate(losses)
+            @printf(io, "%d %.12f\n", i, L)
+        end
+    end
 
     return res.u, st, final_params
 end
