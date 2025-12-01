@@ -1,1 +1,1 @@
-include("dummy_test.jl")
+include("infuser_test.jl")
