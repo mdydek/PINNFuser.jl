@@ -1,11 +1,11 @@
 using Test
-using Lux
-using OrdinaryDiffEq
-using StableRNGs
-using Statistics
-using OptimizationOptimisers
-using LinearAlgebra
-using ComponentArrays
+using Lux,
+    OrdinaryDiffEq,
+    StableRNGs,
+    Statistics,
+    OptimizationOptimisers,
+    LinearAlgebra,
+    ComponentArrays
 
 include("../lib/lib.jl")
 using .LibInfuser
