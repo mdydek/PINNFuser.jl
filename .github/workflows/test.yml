@@ -20,4 +20,4 @@ jobs:
         uses: julia-actions/setup-julia@v2.6.1
 
       - name: Run tests
-        run: julia --project=. --compiled-modules=no final/test/runtests.jl
+        run: julia --project=. final/test/runtests.jl
