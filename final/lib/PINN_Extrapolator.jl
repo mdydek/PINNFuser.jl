@@ -46,8 +46,14 @@ function PINN_Extrapolator(
 
     pinn_problem = ODEProblem(pinn_ode!, base_problem.u0, tspan)
 
-    solved_pinn =
-        solve(pinn_problem, Vern7(), saveat = new_tseps, reltol = reltol, abstol = abstol, dtmax = dtmax)
+    solved_pinn = solve(
+        pinn_problem,
+        Vern7(),
+        saveat = new_tseps,
+        reltol = reltol,
+        abstol = abstol,
+        dtmax = dtmax,
+    )
 
     pred_mat = hcat(solved_pinn.u...)'
 

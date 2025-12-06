@@ -72,8 +72,7 @@ trained_p, trained_st = LibInfuser.PINN_Infuser(
 
 # Save extrapolation data
 extrapolation_tspan = (0.0, 60.0)
-new_tseps =
-    range(extrapolation_tspan[1], extrapolation_tspan[2], length = 9000)
+new_tseps = range(extrapolation_tspan[1], extrapolation_tspan[2], length = 9000)
 
 PINN_Extrapolator(
     ode_problem,

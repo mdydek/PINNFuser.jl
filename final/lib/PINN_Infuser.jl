@@ -61,7 +61,8 @@ function PINN_Infuser(
     p_NN = 0 * ComponentVector{Float64}(p_NN)
 
     ode_f = ode_problem.f
-    tsteps = range(ode_problem.tspan[1], ode_problem.tspan[2], length = size(target_data, 1))
+    tsteps =
+        range(ode_problem.tspan[1], ode_problem.tspan[2], length = size(target_data, 1))
 
     function pinn_ode!(du, u, p_NN, t)
         nn_output = nn(u, p_NN, st)[1]

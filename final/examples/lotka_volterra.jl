@@ -28,10 +28,7 @@ sol_true = solve(prob_true, Vern7(), saveat = tsteps)
 data_noisy = sol_true.u .+ σ_noise .* randn.(size.(sol_true.u))
 data_noisy_mat = hcat(data_noisy...)'
 
-NN = Lux.Chain(
-    Lux.Dense(2, 20, tanh),
-    Lux.Dense(20, 20, tanh),
-    Lux.Dense(20, 2))
+NN = Lux.Chain(Lux.Dense(2, 20, tanh), Lux.Dense(20, 20, tanh), Lux.Dense(20, 2))
 
 function lv_to_infuse!(du, u, p, t)
     x, y = u
@@ -71,8 +68,8 @@ LibInfuser.PINN_Extrapolator(
     extrapolation_tspan,
     num_of_samples * 3,
     "lotka_extrapolation.csv",
-    nn_output_weight = 1.0
-    )
+    nn_output_weight = 1.0,
+)
 
 pred_mat = readdlm("lotka_extrapolation.csv", ',', Float64)
 
@@ -90,11 +87,7 @@ LibInfuser.PINNPlotter.plot_PINN_results(
     pred_mat[:, 1:1],
     data_noisy_mat[:, 1:1],
     ode_solution[:, 1:1],
-    [
-        "Prey data",
-        "PINN Prey",
-        "ODE Prey (no NN)",
-    ],
+    ["Prey data", "PINN Prey", "ODE Prey (no NN)"],
     tsteps,
     new_tseps,
     "t",
@@ -108,11 +101,7 @@ LibInfuser.PINNPlotter.plot_PINN_results(
     pred_mat[:, 2:2],
     data_noisy_mat[:, 2:2],
     ode_solution[:, 2:2],
-    [
-        "Predator data",
-        "PINN Predator",
-        "ODE Predator (no NN)",
-    ],
+    ["Predator data", "PINN Predator", "ODE Predator (no NN)"],
     tsteps,
     new_tseps,
     "t",
