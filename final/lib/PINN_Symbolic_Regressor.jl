@@ -13,8 +13,13 @@ Wraps a pre-trained neural network into an ODE problem for symbolic regression.
 - `nn::Lux.Chain`: The Lux neural network model structure.
 - `pretrained_params::Tuple{Any, Any}`: The trained parameters of the neural
 network.
+- `iters::Int=500`: Number of iterations for the symbolic regression.
 """
-function PINN_Symbolic_Regressor(nn::Lux.Chain, pretrained_params::Tuple{Any,Any})
+function PINN_Symbolic_Regressor(
+    nn::Lux.Chain,
+    pretrained_params::Tuple{Any,Any},
+    iters::Int = 500,
+)
 
     trained_u, trained_st = pretrained_params
     num_samples = 500
@@ -28,10 +33,9 @@ function PINN_Symbolic_Regressor(nn::Lux.Chain, pretrained_params::Tuple{Any,Any
     out_dims = size(y_matrix, 1)
 
     sr_model = SRRegressor(
-        niterations = 500,
+        niterations = iters,
         binary_operators = [+, -, *, /],
         unary_operators = [cos, exp, sin],
-        maxsize = 15,
     )
 
     for j = 1:out_dims
