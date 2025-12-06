@@ -25,12 +25,12 @@ that includes both data fidelity and physical law adherence.
 - `learning_rate::Float64 = 0.001`: The learning rate for the optimizer.
 - `reltol::Float64 = 1e-6`: The relative tolerance for the ODE solver.
 - `abstol::Float64 = 1e-6`: The absolute tolerance for the ODE solver.
-- `dtmax::Float64 = 1e-2`: The maximum time step for the ODE solver.
+- `dtmax = Inf`: The maximum time step for the ODE solver.
 - `iters::Int = 1000`: The number of training iterations.
 - `rng::StableRNG` = StableRNG(5958): A random number generator for reproducibility.
 - `loss_logfile::String = "training_logs/loss_history.txt"`: File path to log loss history.
-- `data_vars::Union{Nothing,Vector{Int}} = nothing`: indices of variables included in data loss. If not defined all variables are used.
-- `physics_vars::Union{Nothing,Vector{Int}} = nothing`: indices of variables included in physics loss. If not defined all variables are used.
+- `data_vars::Union{Nothing,Vector{Int}} = nothing`: Indices of variables to include in data loss.
+- `physics_vars::Union{Nothing,Vector{Int}} = nothing`: Indices of variables to include in physics loss.
 
 # Returns
 - `Tuple{Any, Any}`: The trained parameters of the neural network.
@@ -46,7 +46,7 @@ function PINN_Infuser(
     learning_rate::Float64 = 0.001,
     reltol::Float64 = 1e-6,
     abstol::Float64 = 1e-6,
-    dtmax = 1e-2,
+    dtmax = Inf,
     iters::Int = 1000,
     rng::StableRNG = StableRNG(5958),
     loss_logfile::String = "training_logs/loss_history.txt",
@@ -57,41 +57,24 @@ function PINN_Infuser(
     data_vars === nothing && (data_vars = collect(1:nvars))
     physics_vars === nothing && (physics_vars = collect(1:nvars))
 
-    p_init, st = Lux.setup(rng, nn)
-    p = ComponentVector{Float64}(p_init) .* 1e-5
-
-    U_MEAN = vec(mean(target_data, dims = 1))
-    U_STD = vec(std(target_data, dims = 1)) .+ 1e-6
-
-    # function pinn_ode!(du, u, p, t)
-    #     nn_input = (u .- U_MEAN) ./ U_STD
-    #     nn_output = nn(nn_input, p, st)[1]
-    #     ode_f(du, u, original_p, t)
-    #     du .*= 1 .+ (nn_output_weight .* tanh.(nn_output))
-    # end
+    p_NN, st = Lux.setup(rng, nn)
+    p_NN = 0 * ComponentVector{Float64}(p_NN)
 
     ode_f = ode_problem.f
-    original_p = ode_problem.p
-    tsteps =
-        range(ode_problem.tspan[1], ode_problem.tspan[2], length = size(target_data, 1))
+    tsteps = range(ode_problem.tspan[1], ode_problem.tspan[2], length = size(target_data, 1))
 
-    function get_nn_output(u, p)
-        norm_u = (u .- U_MEAN) ./ U_STD
-        return nn(norm_u, p, st)[1]
+    function pinn_ode!(du, u, p_NN, t)
+        nn_output = nn(u, p_NN, st)[1]
+        ode_f(du, u, nothing, t)
+        du .*= 1 .+ nn_output_weight .* tanh.(nn_output)
     end
 
-    function pinn_ode!(du, u, p, t)
-        nn_output = get_nn_output(u, p)
-        ode_f(du, u, original_p, t)
-        du .*= (1 .+ nn_output_weight .* tanh.(nn_output))
-    end
-
-    function predict(p)
+    function predict(p_NN)
         temp_prob = ODEProblem(
-            (du, u, p, t) -> pinn_ode!(du, u, p, t),
+            (du, u, p_NN, t) -> pinn_ode!(du, u, p_NN, t),
             ode_problem.u0,
             ode_problem.tspan,
-            p,
+            p_NN,
         )
         temp_sol = solve(
             temp_prob,
@@ -106,43 +89,40 @@ function PINN_Infuser(
 
     function data_loss(pred, data, data_vars)
         pred_mat = hcat(pred.u...)'
-        pred_sel = pred_mat[:, data_vars]
-        data_sel = data[:, data_vars]
-        return mean(abs2, pred_sel .- data_sel)
+        return sum(mean(abs2, pred_mat[:, j] .- data[:, j]) for j in data_vars)
     end
 
-    function physics_loss(pred, p, physics_vars)
+    function physics_loss(pred, p_NN, physics_vars)
         pred_mat = hcat(pred.u...)'
         l = 0.0
-
         for (i, t) in enumerate(tsteps)
             u = pred_mat[i, :]
-
-            nn_output = get_nn_output(u, p)
-            l += mean(abs2, (tanh.(nn_output[physics_vars])))
+            du = similar(u)
+            pinn_ode!(du, u, p_NN, t)
+            f_base = similar(u)
+            ode_f(f_base, u, nothing, t)
+            l += mean(abs2.(du[physics_vars] .- f_base[physics_vars]))
         end
-
-        return l
+        return l / length(tsteps)
     end
 
-    function loss(p)
-        pred = predict(p)
+    function loss(p_NN)
+        pred = predict(p_NN)
         L_data = data_loss(pred, target_data, data_vars)
-        L_phys = physics_loss(pred, p, physics_vars)
+        L_phys = physics_loss(pred, p_NN, physics_vars)
         return L_data + physics_weight * L_phys
     end
 
-
     adtype = Optimization.AutoForwardDiff()
     optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
-    optprob = Optimization.OptimizationProblem(optf, p)
+    optprob = Optimization.OptimizationProblem(optf, p_NN)
     losses = Float64[]
 
-    callback = function (p, l)
+    callback = function (p_NN, l)
         push!(losses, l)
         println("Iteration $(length(losses)): Loss = $(losses[end])")
 
-        if early_stopping && length(losses) > 10 && losses[end] - losses[end-10] > 0
+        if early_stopping && length(losses) > 100 && losses[end] - losses[end-10] > 0
             println("Early stopping at iteration $(length(losses)) with loss $(losses[end])")
             return true
         else
@@ -157,7 +137,6 @@ function PINN_Infuser(
         maxiters = iters,
     )
 
-    # Save loss history
     folder = dirname(loss_logfile)
     if folder != "" && !isdir(folder)
         println("Creating directory for training logs: $folder")
