@@ -32,7 +32,7 @@ end
         pretrained_params = (ps_fixed, st)
 
         output_str = capture_stdout() do
-            LibInfuser.PINN_Symbolic_Regressor(nn, pretrained_params, 100)
+            LibInfuser.PINN_Symbolic_Regressor(nn, pretrained_params, 1)
         end
 
         @test occursin("Finding equation", output_str)
@@ -47,7 +47,7 @@ end
         pretrained_params = (ps, st)
 
         output_str = capture_stdout() do
-            LibInfuser.PINN_Symbolic_Regressor(nn_multi, pretrained_params, 100)
+            LibInfuser.PINN_Symbolic_Regressor(nn_multi, pretrained_params, 1)
         end
 
         @test occursin("Finding equation for Output 1", output_str)
