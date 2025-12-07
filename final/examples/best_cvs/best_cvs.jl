@@ -58,8 +58,7 @@ end
 
 function predict(p_NN, α)
     prob = ODEProblem((du, u, p_NN, t) -> NIK_PINN!(du, u, p_NN, t, α), u0, tspan, p_NN)
-    sol = solve(prob, Vern7(), dtmax = 1e-2, saveat = tsteps,
-                reltol = 1e-4, abstol = 1e-7)
+    sol = solve(prob, Vern7(), dtmax = 1e-2, saveat = tsteps, reltol = 1e-4, abstol = 1e-7)
     return sol
 end
 
@@ -99,7 +98,9 @@ function make_callback(α; print_every = 10)
     return function (p_NN, l)
         if iter[] % print_every == 0
             tid = Threads.threadid()
-            println("    [α=$(α), thread $tid] iter=$(iter[])  |  loss=$(round(l, sigdigits=6))")
+            println(
+                "    [α=$(α), thread $tid] iter=$(iter[])  |  loss=$(round(l, sigdigits=6))",
+            )
         end
         iter[] += 1
         return false
@@ -136,11 +137,13 @@ PINN_sol_u = best_params
 
 tspan2 = (0.0, 60.0)
 tsteps2 = range(0.0, 60.0, length = 9000)
-trained_NN =
-    ODEProblem((du, u, p_NN, t) -> NIK_PINN!(du, u, p_NN, t, best_alpha), 
-               u0, tspan2, PINN_sol_u)
-s = solve(trained_NN, Vern7(), dtmax = 1e-2, saveat = tsteps2,
-          reltol = 1e-4, abstol = 1e-7)
+trained_NN = ODEProblem(
+    (du, u, p_NN, t) -> NIK_PINN!(du, u, p_NN, t, best_alpha),
+    u0,
+    tspan2,
+    PINN_sol_u,
+)
+s = solve(trained_NN, Vern7(), dtmax = 1e-2, saveat = tsteps2, reltol = 1e-4, abstol = 1e-7)
 
 data_to_save = hcat(s[1, :], s[2, :], s[3, :], s[4, :], s[5, :], s[6, :], s[7, :])
 writedlm("data/best_cvs_extrapolation.txt", data_to_save)
