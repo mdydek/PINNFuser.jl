@@ -48,7 +48,6 @@ function plot_PINN_results(
     end
 
     function plot_equation(idx; plt_title = nothing)
-        title_text = isnothing(plt_title) ? "Equation $idx" : plt_title
 
         plot(
             data_steps,
@@ -57,7 +56,6 @@ function plot_PINN_results(
             seriestype = :scatter,
             markersize = 2,
             markerstrokewidth = 0,
-            title = title_text,
             xlabel = xlabel,
             ylabel = ylabel,
             titlefontsize = 10,
@@ -69,14 +67,14 @@ function plot_PINN_results(
             infused_matrix[:, idx],
             label = labels[idx*3-1],
             lw = 2,
-            linestyle = :dash,
+            linestyle = :solid,
         )  # PINN
         plot!(
             extrapolation_tseps,
             ode_solution[:, idx],
             label = labels[idx*3],
             lw = 2,
-            linestyle = :dash,
+            linestyle = :solid,
         )      # ODE
     end
 
