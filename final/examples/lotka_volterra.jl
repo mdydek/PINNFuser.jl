@@ -41,6 +41,7 @@ infusing_problem = ODEProblem(lv_to_infuse!, u0, tspan)
 (PINN_solu, trained_st) = LibInfuser.PINN_Infuser(
     infusing_problem,
     NN,
+    tsteps,
     data_noisy_mat,
     nn_output_weight = 1.0,
     physics_weight = 1.0,
