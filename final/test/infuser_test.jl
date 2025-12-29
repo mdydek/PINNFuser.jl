@@ -14,19 +14,19 @@ using .LibInfuser
 
     function oscillator(du, u, p, t)
         du[1] = u[2]
-        du[2] = -p[1] * u[1]
+        du[2] = -u[1]
     end
 
     u0 = [1.0, 0.0]
     tspan = (0.0, 5.0)
     p_true = [1.0]
-    prob = ODEProblem(oscillator, u0, tspan, p_true)
+    prob = ODEProblem(oscillator, u0, tspan)
 
     function damped_oscillator(du, u, p, t)
         du[1] = u[2]
-        du[2] = -p[1] * u[1] - 0.1 * u[2]
+        du[2] = -u[1] - 0.1 * u[2]
     end
-    prob_target = ODEProblem(damped_oscillator, u0, tspan, p_true)
+    prob_target = ODEProblem(damped_oscillator, u0, tspan)
     sol_target = solve(prob_target, Vern7(), saveat = 0.1)
     target_data = hcat(sol_target.u...)' |> Matrix{Float64}
     tsteps = range(tspan[1], tspan[2], length = size(target_data, 1))
@@ -41,7 +41,6 @@ using .LibInfuser
             tsteps,
             target_data,
             iters = 10,
-            optimizer = ADAM,
             loss_logfile = "test_logs/smoke_test.txt",
         )
 
