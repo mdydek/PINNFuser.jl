@@ -7,7 +7,6 @@ using Printf
 export PINN_Infuser
 
 """
-    PINN_Infuser(ode_problem, nn, loss, target_data; nn_output_weight=0.1, physics_weight = 1.0, optimizer=ADAM(), ...)
 
 Trains a Physics-Informed Neural Network (PINN) by minimizing a composite loss function
 that includes both data fidelity and physical law adherence.
