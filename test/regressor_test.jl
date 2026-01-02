@@ -4,7 +4,7 @@ using MLJ
 using SymbolicRegression
 using StableRNGs
 
-include("../lib/lib.jl")
+include("../src/lib.jl")
 using .LibInfuser
 
 function capture_stdout(f)

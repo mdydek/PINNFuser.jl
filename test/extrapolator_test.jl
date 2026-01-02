@@ -6,7 +6,7 @@ using Statistics
 using Random
 
 # Assuming the module code provided is included or loaded here
-include("../lib/lib.jl")
+include("../src/lib.jl")
 using .LibInfuser
 
 @testset "PINN_Extrapolator Test Suite" begin

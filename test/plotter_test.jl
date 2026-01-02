@@ -2,7 +2,7 @@ using Test
 using Plots
 using DelimitedFiles
 
-include("../lib/lib.jl")
+include("../src/lib.jl")
 using .LibInfuser
 
 

@@ -9,7 +9,7 @@ using Statistics
 using ForwardDiff
 
 # Assuming the module code provided is included or loaded here
-include("../lib/lib.jl")
+include("../src/lib.jl")
 using .LibInfuser
 
 @testset "PINNParamTuner Test Suite" begin

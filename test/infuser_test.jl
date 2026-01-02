@@ -7,7 +7,7 @@ using Lux,
     LinearAlgebra,
     ComponentArrays
 
-include("../lib/lib.jl")
+include("../src/lib.jl")
 using .LibInfuser
 
 @testset "PINNInfuser Tests" begin
