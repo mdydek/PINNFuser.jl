@@ -7,7 +7,6 @@ using MLJ: machine, fit!, predict, report
 export PINN_Symbolic_Regressor
 
 """
-    PINN_Symbolic_Regressor(ode_problem, nn, pretrained_params)
 Wraps a pre-trained neural network into an ODE problem for symbolic regression.
 # Arguments
 - `nn::Lux.Chain`: The Lux neural network model structure.

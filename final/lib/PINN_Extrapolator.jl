@@ -5,7 +5,6 @@ using Lux, DelimitedFiles, OrdinaryDiffEq
 export PINN_Extrapolator
 
 """
-    PINN_Extrapolator(ode_problem, tspan, num_of_samples, u0, pretrained_params, path_to_save)
 
 Solves a PINN-infused ODE problem to extrapolate its trajectory and saves the result to a file.
 

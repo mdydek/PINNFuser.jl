@@ -12,7 +12,6 @@ export PINN_Parameter_Tuner
 
 
 """
-    PINN_Parameter_Tuner(model_ode!, u0, tspan, target_data; initial_params, tune_params, ...)
 
 Trains a neural network to tune selected constant parameters of an ODE model.
 

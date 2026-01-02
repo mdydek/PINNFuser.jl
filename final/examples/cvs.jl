@@ -10,14 +10,12 @@ using .simpleModel
 include("../lib/lib.jl")
 using .LibInfuser
 
-rng = StableRNG(5958)
-
 # Training range
 tspan = (0.0, 7.0)
 num_of_samples = 300
 tsteps = range(5.0, 7.0, length = num_of_samples)
 
-loaded_data = readdlm("src/data/original_data.txt")
+loaded_data = readdlm("final/examples/best_cvs/data/original_data.txt")
 original_data = Array{Float64}(loaded_data)
 original_data = original_data[751:1050, :]
 
@@ -56,6 +54,7 @@ ode_problem = ODEProblem(NIK!, u0, tspan)
 trained_p, trained_st = LibInfuser.PINN_Infuser(
     ode_problem,
     NN,
+    tsteps,
     original_data;
     early_stopping = true,
     nn_output_weight = 0.1,
@@ -74,7 +73,7 @@ trained_p, trained_st = LibInfuser.PINN_Infuser(
 extrapolation_tspan = (0.0, 60.0)
 new_tseps = range(extrapolation_tspan[1], extrapolation_tspan[2], length = 9000)
 
-PINN_Extrapolator(
+LibInfuser.PINN_Extrapolator(
     ode_problem,
     NN,
     (trained_p, trained_st),

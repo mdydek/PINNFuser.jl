@@ -7,7 +7,6 @@ using Printf
 export PINN_Infuser
 
 """
-    PINN_Infuser(ode_problem, nn, loss, target_data; nn_output_weight=0.1, physics_weight = 1.0, optimizer=ADAM(), ...)
 
 Trains a Physics-Informed Neural Network (PINN) by minimizing a composite loss function
 that includes both data fidelity and physical law adherence.
@@ -15,6 +14,7 @@ that includes both data fidelity and physical law adherence.
 # Arguments
 - `ode_problem::SciMLBase.ODEProblem`: The ODE problem defining the physical laws.
 - `nn::Lux.Chain`: The Lux neural network model to be trained.
+- `training_steps::AbstractRange`: The time steps at which to evaluate the solution and calculate loss function.
 - `target_data::Array{Float64}`: The ground truth data for training.
 
 # Keyword Arguments
@@ -38,6 +38,7 @@ that includes both data fidelity and physical law adherence.
 function PINN_Infuser(
     ode_problem::SciMLBase.ODEProblem,
     nn::Lux.Chain,
+    training_steps::AbstractRange,
     target_data::AbstractMatrix{Float64};
     early_stopping::Bool = true,
     nn_output_weight::Float64 = 0.1,
@@ -61,8 +62,6 @@ function PINN_Infuser(
     p_NN = 0 * ComponentVector{Float64}(p_NN)
 
     ode_f = ode_problem.f
-    tsteps =
-        range(ode_problem.tspan[1], ode_problem.tspan[2], length = size(target_data, 1))
 
     function pinn_ode!(du, u, p_NN, t)
         nn_output = nn(u, p_NN, st)[1]
@@ -80,7 +79,7 @@ function PINN_Infuser(
         temp_sol = solve(
             temp_prob,
             Vern7(),
-            saveat = tsteps,
+            saveat = training_steps,
             dtmax = dtmax,
             reltol = reltol,
             abstol = abstol,
@@ -96,7 +95,7 @@ function PINN_Infuser(
     function physics_loss(pred, p_NN, physics_vars)
         pred_mat = hcat(pred.u...)'
         l = 0.0
-        for (i, t) in enumerate(tsteps)
+        for (i, t) in enumerate(training_steps)
             u = pred_mat[i, :]
             du = similar(u)
             pinn_ode!(du, u, p_NN, t)
@@ -104,7 +103,7 @@ function PINN_Infuser(
             ode_f(f_base, u, nothing, t)
             l += mean(abs2.(du[physics_vars] .- f_base[physics_vars]))
         end
-        return l / length(tsteps)
+        return l / length(training_steps)
     end
 
     function loss(p_NN)
@@ -123,7 +122,9 @@ function PINN_Infuser(
         push!(losses, l)
         println("Iteration $(length(losses)): Loss = $(losses[end])")
 
-        if early_stopping && length(losses) > 100 && losses[end] - losses[end-10] > 0
+        if early_stopping &&
+           length(losses) > 100 &&
+           losses[end] - maximum(losses[(end-10):(end-1)]) > 0
             println("Early stopping at iteration $(length(losses)) with loss $(losses[end])")
             return true
         else

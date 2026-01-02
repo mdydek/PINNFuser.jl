@@ -29,6 +29,7 @@ using .LibInfuser
     prob_target = ODEProblem(damped_oscillator, u0, tspan)
     sol_target = solve(prob_target, Vern7(), saveat = 0.1)
     target_data = hcat(sol_target.u...)' |> Matrix{Float64}
+    tsteps = range(tspan[1], tspan[2], length = size(target_data, 1))
 
     rng = StableRNG(42)
     nn = Chain(Dense(2, 10, tanh), Dense(10, 2))
@@ -37,6 +38,7 @@ using .LibInfuser
         params, st = LibInfuser.PINN_Infuser(
             prob,
             nn,
+            tsteps,
             target_data,
             iters = 10,
             loss_logfile = "test_logs/smoke_test.txt",
@@ -54,6 +56,7 @@ using .LibInfuser
         LibInfuser.PINN_Infuser(
             prob,
             nn,
+            tsteps,
             target_data,
             iters = 100,
             learning_rate = 0.01,
@@ -80,6 +83,7 @@ using .LibInfuser
         params, st = LibInfuser.PINN_Infuser(
             prob,
             nn,
+            tsteps,
             target_data,
             iters = 10,
             data_vars = data_vars,
@@ -94,10 +98,12 @@ using .LibInfuser
 
     @testset "Deterministic test" begin
         rng1 = StableRNG(123)
-        res1, _ = LibInfuser.PINN_Infuser(prob, nn, target_data, rng = rng1, iters = 5)
+        res1, _ =
+            LibInfuser.PINN_Infuser(prob, nn, tsteps, target_data, rng = rng1, iters = 5)
 
         rng2 = StableRNG(123)
-        res2, _ = LibInfuser.PINN_Infuser(prob, nn, target_data, rng = rng2, iters = 5)
+        res2, _ =
+            LibInfuser.PINN_Infuser(prob, nn, tsteps, target_data, rng = rng2, iters = 5)
 
         @test res1 == res2
     end

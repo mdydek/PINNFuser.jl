@@ -5,7 +5,6 @@ using Plots
 export PINN_Plotter
 
 """
-    PINN_Plotter(infused_matrix, data, ode_solution, labels, data_steps, extrapolation_tseps, xlabel, ylabel, title, filename)
 
 Creates a comparative visualization plot showing PINN predictions, original data, and standard ODE solutions.
 
