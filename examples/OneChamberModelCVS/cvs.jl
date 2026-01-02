@@ -4,10 +4,10 @@ using Optimization, OptimizationOptimisers, OptimizationOptimJL
 using Optim, Measures, BenchmarkTools
 using DelimitedFiles, ForwardDiff
 
-include("../models/simple_CVS_model.jl")
+include("./simple_CVS_model.jl")
 using .simpleModel
 
-include("../lib/lib.jl")
+include("../../src/lib.jl")
 using .LibInfuser
 
 # Training range
@@ -15,7 +15,7 @@ tspan = (0.0, 7.0)
 num_of_samples = 300
 tsteps = range(5.0, 7.0, length = num_of_samples)
 
-loaded_data = readdlm("final/examples/best_cvs/data/original_data.txt")
+loaded_data = readdlm("examples/OneChamberModelCVS/original_data.txt")
 original_data = Array{Float64}(loaded_data)
 original_data = original_data[751:1050, :]
 
