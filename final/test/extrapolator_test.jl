@@ -13,9 +13,7 @@ using .LibInfuser
 
     # --- Test Fixtures and Setup ---
     rng = Random.default_rng()
-    Random.seed!(rng, 42)
 
-    # 1. Define a simple Base ODE (Exponential decay: du/dt = -u)
     function simple_decay!(du, u, p, t)
         du[1] = -u[1]
     end
@@ -46,12 +44,10 @@ using .LibInfuser
 
         LibInfuser.PINN_Extrapolator(
             base_prob,
-            tspan,
-            target_data,
-            alpha,
-            num_samples,
             nn,
             pretrained_params,
+            tspan,
+            num_samples,
             test_output_path,
         )
 
@@ -74,15 +70,13 @@ using .LibInfuser
 
         LibInfuser.PINN_Extrapolator(
             base_prob,
-            tspan,
-            target_data,
-            alpha,
-            num_samples,
             nn,
             pretrained_params,
+            tspan,
+            num_samples,
             test_output_path,
+            nn_output_weight = alpha,
         )
-
         pinn_result = readdlm(test_output_path, ',')
 
         save_times = range(tspan[1], tspan[2], length = num_samples)
@@ -116,13 +110,20 @@ using .LibInfuser
         alpha = 0.5
 
         LibInfuser.PINN_Extrapolator(
-            prob_2d,
+            base_prob,
+            nn,
+            pretrained_params,
             tspan,
-            target_data_2d,
-            alpha,
             num_samples,
+            test_output_path,
+        )
+
+        LibInfuser.PINN_Extrapolator(
+            prob_2d,
             nn_2d,
             (ps_2d, st_2d),
+            tspan,
+            num_samples,
             test_output_path,
         )
 
