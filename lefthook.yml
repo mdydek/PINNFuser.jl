@@ -2,5 +2,5 @@ pre-commit:
   parallel: true
   commands:
     format:
-      run: julia --project=./final/utils final/utils/format.jl
+      run: julia --project=./utils utils/format.jl
       stage_fixed: true

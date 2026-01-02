@@ -1,6 +1,6 @@
 using DelimitedFiles, StableRNGs, OrdinaryDiffEq, Lux, Plots
 
-include("../lib/lib.jl")
+include("../../src/lib.jl")
 using .LibInfuser
 
 rng = StableRNG(5958)
