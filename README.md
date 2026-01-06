@@ -17,7 +17,7 @@ The library is designed primarily for lumped-parameter cardiovascular models but
 
 ## Installation
 
-This library is not available via `Pkg.add`.
+This library is not available via Julia package registry.
 
 Clone the repository and make it available in your Julia environment manually:
 
@@ -31,5 +31,4 @@ The figure below shows an example result obtained using a one-chamber cardiovasc
 
 <img width="1667" height="1112" alt="final_plot_2-1" src="https://github.com/user-attachments/assets/9f68107b-8636-432b-ab8a-4d0cd0b17a38" />
 
-The full implementation of this example, including model definition, training, and extrapolation, is available in:
-`examples/OneChamberModelCVS/`
+The full implementation of this example, including model definition, training, and extrapolation, is available in [one chamber model example](examples/OneChamberModelCVS/).
