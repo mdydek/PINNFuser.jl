@@ -55,6 +55,11 @@ function PINN_Infuser(
     physics_vars::Union{Nothing,Vector{Int}} = nothing,
 )::Tuple{Any,Any}
     nvars = length(ode_problem.u0)
+
+    U_MEAN = vec(mean(target_data, dims = 1))
+    U_STD = vec(std(target_data, dims = 1)) .+ 1e-6
+    target_data = (target_data .- U_MEAN') ./ U_STD'
+
     data_vars === nothing && (data_vars = collect(1:nvars))
     physics_vars === nothing && (physics_vars = collect(1:nvars))
 
@@ -89,7 +94,8 @@ function PINN_Infuser(
 
     function data_loss(pred, data, data_vars)
         pred_mat = hcat(pred.u...)'
-        return sum(mean(abs2, pred_mat[:, j] .- data[:, j]) for j in data_vars)
+        pred_normalized = (pred_mat .- U_MEAN') ./ U_STD'
+        return sum(mean(abs2, pred_normalized[:, j] .- data[:, j]) for j in data_vars)
     end
 
     function physics_loss(pred, p_NN, physics_vars)
