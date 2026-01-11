@@ -91,23 +91,32 @@ mkpath("plots")
 pinn_pred = readdlm("cvs_lib_extrapolation.txt", ',', Float64)
 ode_problem_extrap = ODEProblem(NIK!, u0, extrapolation_tspan)
 
-ode_sol = solve(
-    ode_problem_extrap,
-    Vern7();
-    saveat = new_tseps,
-    reltol = 1e-6,
-    abstol = 1e-6,
-)
+ode_sol =
+    solve(ode_problem_extrap, Vern7(); saveat = new_tseps, reltol = 1e-6, abstol = 1e-6)
 one_chamber_sol = Matrix(Array(ode_sol)')
 
 labels = [
-    "Four chamber pLV", "PINN pLV", "One chamber pLV",
-    "Four chamber psa", "PINN psa", "One chamber psa",
-    "Four chamber psv", "PINN psv", "One chamber psv",
-    "Four chamber Vlv", "PINN Vlv", "One chamber Vlv",
-    "Four chamber Qav", "PINN Qav", "One chamber Qav",
-    "Four chamber Qmv", "PINN Qmv", "One chamber Qmv",
-    "Four chamber Qs", "PINN Qs", "One chamber Qs",
+    "Four chamber pLV",
+    "PINN pLV",
+    "One chamber pLV",
+    "Four chamber psa",
+    "PINN psa",
+    "One chamber psa",
+    "Four chamber psv",
+    "PINN psv",
+    "One chamber psv",
+    "Four chamber Vlv",
+    "PINN Vlv",
+    "One chamber Vlv",
+    "Four chamber Qav",
+    "PINN Qav",
+    "One chamber Qav",
+    "Four chamber Qmv",
+    "PINN Qmv",
+    "One chamber Qmv",
+    "Four chamber Qs",
+    "PINN Qs",
+    "One chamber Qs",
 ]
 
 mask = new_tseps .>= 5.0
